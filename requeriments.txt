@@ -1,0 +1,33 @@
+
+# NoteBox - Sistema de Gestión de Inventario
+# Dependencias del proyecto
+
+# Base de datos
+mysql-connector-python==8.2.0
+
+# Interfaz gráfica (incluido en Python)
+# tkinter - viene instalado por defecto con Python
+
+# Utilidades de fecha y hora (incluido en Python)
+# datetime - viene instalado por defecto
+
+# JSON (incluido en Python)
+# json - viene instalado por defecto
+
+# Sistema operativo (incluido en Python)
+# os - viene instalado por defecto
+
+# Expresiones regulares (incluido en Python)
+# re - viene instalado por defecto
+
+# Opcional: Para generación de reportes PDF (descomentar si se necesita)
+# reportlab==4.0.7
+# pillow==10.1.0
+
+# Opcional: Para exportar a Excel (descomentar si se necesita)
+# openpyxl==3.1.2
+# xlsxwriter==3.1.9
+
+# Opcional: Para gráficos y estadísticas (descomentar si se necesita)
+# matplotlib==3.8.2
+# pandas==2.1.4
