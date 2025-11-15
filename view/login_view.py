@@ -1,209 +1,314 @@
-"""
-NoteBox - Sistema de Gestión de Inventario
-Login View con CustomTkinter
-Papelería Valeria
-"""
+# view/login_view.py
 
+import tkinter as tk
+from tkinter import messagebox
 import customtkinter as ctk
-from PIL import Image
-import os
 
-# Configuración de tema
-ctk.set_appearance_mode("light")
-ctk.set_default_color_theme("blue")
-
-class LoginView(ctk.CTk):
-    def __init__(self):
-        super().__init__()
+class LoginView:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("NoteBox")
         
-        # Configuración de ventana
-        self.title("NoteBox - Login")
-        self.geometry("500x700")
-        self.resizable(False, False)
+        # Obtener dimensiones de la pantalla
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
         
-        # Centrar ventana
-        self.center_window()
+        # Tamaño de la ventana
+        window_width = 480
+        window_height = 720
         
-        # Frame principal con padding
-        self.main_frame = ctk.CTkFrame(self, fg_color="white", corner_radius=20)
-        self.main_frame.pack(fill="both", expand=True, padx=40, pady=40)
+        # Calcular posición central
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
         
-        # Logo (placeholder - caja azul con ícono)
-        self.logo_frame = ctk.CTkFrame(
-            self.main_frame, 
-            width=100, 
-            height=100, 
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        self.root.resizable(False, False)
+        
+        # Configurar tema
+        ctk.set_appearance_mode("light")
+        ctk.set_default_color_theme("blue")
+        
+        # Variables
+        self.username_var = tk.StringVar()
+        self.password_var = tk.StringVar()
+        self.remember_var = tk.BooleanVar()
+        
+        # Mostrar loading primero
+        self.show_loading()
+    
+    def show_loading(self):
+        """Pantalla de carga inicial"""
+        # Frame principal
+        self.loading_frame = ctk.CTkFrame(self.root, fg_color="white")
+        self.loading_frame.pack(fill="both", expand=True)
+        
+        # Contenedor central
+        center_frame = ctk.CTkFrame(self.loading_frame, fg_color="white")
+        center_frame.place(relx=0.5, rely=0.5, anchor="center")
+        
+        # Logo - Caja 3D
+        logo_container = ctk.CTkFrame(
+            center_frame,
+            fg_color="#00b4d8",
             corner_radius=20,
-            fg_color="#1E90FF"
+            width=100,
+            height=100
         )
-        self.logo_frame.pack(pady=(40, 10))
+        logo_container.pack(pady=(0, 20))
+        logo_container.pack_propagate(False)
         
-        # Texto del logo (emoji de caja)
-        self.logo_label = ctk.CTkLabel(
-            self.logo_frame,
+        logo_label = ctk.CTkLabel(
+            logo_container,
             text="📦",
-            font=("Arial", 50),
+            font=("Segoe UI Emoji", 50),
             text_color="white"
         )
-        self.logo_label.place(relx=0.5, rely=0.5, anchor="center")
+        logo_label.place(relx=0.5, rely=0.5, anchor="center")
         
         # Título
-        self.title_label = ctk.CTkLabel(
-            self.main_frame,
+        title_label = ctk.CTkLabel(
+            center_frame,
             text="NoteBox",
-            font=("Arial", 28, "bold"),
-            text_color="#2C3E50"
+            font=("Arial", 48, "bold"),
+            text_color="#2b2d42"
         )
-        self.title_label.pack(pady=(10, 5))
+        title_label.pack(pady=(0, 10))
+        
+        # Barra de progreso
+        self.progress = ctk.CTkProgressBar(
+            center_frame,
+            width=350,
+            height=6,
+            corner_radius=3,
+            fg_color="#e8e8e8",
+            progress_color="#00b4d8",
+            mode="indeterminate"
+        )
+        self.progress.pack(pady=(30, 0))
+        self.progress.start()
+        
+        # Simular carga y mostrar login
+        self.root.after(2000, self.show_login)
+    
+    def show_login(self):
+        """Mostrar pantalla de login"""
+        # Detener y destruir loading
+        self.progress.stop()
+        self.loading_frame.destroy()
+        
+        # Frame principal con padding
+        main_container = ctk.CTkFrame(self.root, fg_color="white")
+        main_container.pack(fill="both", expand=True)
+        
+        # Frame central con contenido
+        login_frame = ctk.CTkFrame(
+            main_container,
+            fg_color="white",
+            width=400,
+            height=600
+        )
+        login_frame.place(relx=0.5, rely=0.5, anchor="center")
+        login_frame.pack_propagate(False)
+        
+        # === HEADER CON LOGO ===
+        header_frame = ctk.CTkFrame(login_frame, fg_color="white", height=160)
+        header_frame.pack(fill="x", pady=(20, 0))
+        header_frame.pack_propagate(False)
+        
+        # Logo pequeño
+        logo_box = ctk.CTkFrame(
+            header_frame,
+            fg_color="#00b4d8",
+            corner_radius=15,
+            width=70,
+            height=70
+        )
+        logo_box.pack(pady=(0, 15))
+        logo_box.pack_propagate(False)
+        
+        logo_icon = ctk.CTkLabel(
+            logo_box,
+            text="📦",
+            font=("Segoe UI Emoji", 35),
+            text_color="white"
+        )
+        logo_icon.place(relx=0.5, rely=0.5, anchor="center")
+        
+        # Título
+        title = ctk.CTkLabel(
+            header_frame,
+            text="NoteBox",
+            font=("Arial", 32, "bold"),
+            text_color="#2b2d42"
+        )
+        title.pack()
         
         # Subtítulo
-        self.subtitle_label = ctk.CTkLabel(
-            self.main_frame,
+        subtitle = ctk.CTkLabel(
+            header_frame,
             text="Sistema de Gestión de Inventario",
-            font=("Arial", 14),
-            text_color="#7F8C8D"
+            font=("Arial", 13),
+            text_color="#8d99ae"
         )
-        self.subtitle_label.pack(pady=(0, 40))
+        subtitle.pack(pady=(5, 0))
+        
+        # === FORMULARIO ===
+        form_frame = ctk.CTkFrame(login_frame, fg_color="white")
+        form_frame.pack(fill="x", padx=30, pady=(20, 0))
         
         # Label Usuario
-        self.user_label = ctk.CTkLabel(
-            self.main_frame,
+        user_label = ctk.CTkLabel(
+            form_frame,
             text="Usuario",
-            font=("Arial", 13),
-            text_color="#2C3E50",
+            font=("Arial", 13, "bold"),
+            text_color="#2b2d42",
             anchor="w"
         )
-        self.user_label.pack(anchor="w", padx=40, pady=(0, 5))
+        user_label.pack(fill="x", pady=(0, 8))
         
-        # Entry Usuario
-        self.user_entry = ctk.CTkEntry(
-            self.main_frame,
-            placeholder_text="👤 Ingrese su usuario",
-            width=380,
-            height=50,
-            font=("Arial", 13),
-            corner_radius=10,
-            border_width=1,
-            border_color="#E0E0E0"
+        # Entry Usuario con icono
+        user_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+        user_frame.pack(fill="x", pady=(0, 20))
+        
+        user_icon = ctk.CTkLabel(
+            user_frame,
+            text="👤",
+            font=("Segoe UI Emoji", 16),
+            width=40
         )
-        self.user_entry.pack(padx=40, pady=(0, 20))
+        user_icon.pack(side="left")
+        
+        self.user_entry = ctk.CTkEntry(
+            user_frame,
+            textvariable=self.username_var,
+            placeholder_text="Ingrese su usuario",
+            height=45,
+            font=("Arial", 13),
+            corner_radius=8,
+            border_width=2,
+            border_color="#e0e0e0",
+            fg_color="white"
+        )
+        self.user_entry.pack(side="left", fill="x", expand=True)
         
         # Label Contraseña
-        self.pass_label = ctk.CTkLabel(
-            self.main_frame,
+        pass_label = ctk.CTkLabel(
+            form_frame,
             text="Contraseña",
-            font=("Arial", 13),
-            text_color="#2C3E50",
+            font=("Arial", 13, "bold"),
+            text_color="#2b2d42",
             anchor="w"
         )
-        self.pass_label.pack(anchor="w", padx=40, pady=(0, 5))
+        pass_label.pack(fill="x", pady=(0, 8))
         
-        # Entry Contraseña
+        # Entry Contraseña con icono
+        pass_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+        pass_frame.pack(fill="x", pady=(0, 15))
+        
+        pass_icon = ctk.CTkLabel(
+            pass_frame,
+            text="🔒",
+            font=("Segoe UI Emoji", 16),
+            width=40
+        )
+        pass_icon.pack(side="left")
+        
         self.pass_entry = ctk.CTkEntry(
-            self.main_frame,
-            placeholder_text="🔒 Ingrese su contraseña",
-            width=380,
-            height=50,
+            pass_frame,
+            textvariable=self.password_var,
+            placeholder_text="Ingrese su contraseña",
+            show="●",
+            height=45,
             font=("Arial", 13),
-            corner_radius=10,
-            border_width=1,
-            border_color="#E0E0E0",
-            show="●"
+            corner_radius=8,
+            border_width=2,
+            border_color="#e0e0e0",
+            fg_color="white"
         )
-        self.pass_entry.pack(padx=40, pady=(0, 10))
+        self.pass_entry.pack(side="left", fill="x", expand=True)
         
-        # Checkbox Recordar usuario
-        self.remember_check = ctk.CTkCheckBox(
-            self.main_frame,
+        # Checkbox Recordar
+        remember_check = ctk.CTkCheckBox(
+            form_frame,
             text="Recordar usuario",
+            variable=self.remember_var,
             font=("Arial", 12),
-            text_color="#7F8C8D",
-            fg_color="#1E90FF",
-            hover_color="#1873CC"
+            text_color="#6c757d",
+            fg_color="#00b4d8",
+            hover_color="#0096c7",
+            corner_radius=4
         )
-        self.remember_check.pack(anchor="w", padx=40, pady=(0, 30))
+        remember_check.pack(anchor="w", pady=(0, 25))
         
-        # Botón INGRESAR
-        self.login_button = ctk.CTkButton(
-            self.main_frame,
+        # Botón Ingresar
+        login_btn = ctk.CTkButton(
+            form_frame,
             text="INGRESAR",
-            width=380,
+            command=self.login,
             height=50,
             font=("Arial", 14, "bold"),
-            corner_radius=10,
-            fg_color="#1E90FF",
-            hover_color="#1873CC",
-            command=self.login
+            fg_color="#00b4d8",
+            hover_color="#0077b6",
+            corner_radius=8,
+            cursor="hand2"
         )
-        self.login_button.pack(padx=40, pady=(0, 20))
+        login_btn.pack(fill="x", pady=(0, 15))
         
-        # Link recuperar contraseña
-        self.forgot_button = ctk.CTkButton(
-            self.main_frame,
+        # Link contraseña
+        forgot_btn = ctk.CTkButton(
+            form_frame,
             text="¿Olvidó su contraseña?",
-            font=("Arial", 12, "underline"),
-            text_color="#1E90FF",
+            command=self.forgot_password,
+            font=("Arial", 12),
+            text_color="#00b4d8",
             fg_color="transparent",
-            hover_color="#F0F0F0",
-            command=self.forgot_password
+            hover_color="#f8f9fa",
+            cursor="hand2",
+            height=30
         )
-        self.forgot_button.pack(pady=(0, 40))
+        forgot_btn.pack()
         
-        # Versión
-        self.version_label = ctk.CTkLabel(
-            self.main_frame,
+        # === FOOTER ===
+        footer = ctk.CTkLabel(
+            login_frame,
             text="NoteBox v1.0 - 2025",
             font=("Arial", 11),
-            text_color="#BDC3C7"
+            text_color="#adb5bd"
         )
-        self.version_label.pack(side="bottom", pady=20)
+        footer.pack(side="bottom", pady=20)
+        
+        # Focus en campo usuario
+        self.user_entry.focus()
         
         # Bind Enter key
-        self.bind('<Return>', lambda e: self.login())
-        
-    def center_window(self):
-        """Centrar ventana en la pantalla"""
-        self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
-        x = (self.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry(f'{width}x{height}+{x}+{y}')
+        self.root.bind('<Return>', lambda e: self.login())
     
     def login(self):
-        """Acción de login"""
-        usuario = self.user_entry.get()
-        password = self.pass_entry.get()
+        """Procesar login"""
+        username = self.username_var.get().strip()
+        password = self.password_var.get().strip()
         
-        if not usuario or not password:
-            self.show_error("Por favor complete todos los campos")
+        if not username or not password:
+            messagebox.showwarning(
+                "Campos vacíos",
+                "Por favor complete todos los campos"
+            )
             return
         
-        # Aquí iría la lógica de autenticación
-        print(f"Login attempt - User: {usuario}")
-        self.show_success("Login exitoso")
-    
+        # Aquí conectar con el controller
+        print(f"Login attempt: {username}")
+        messagebox.showinfo("Éxito", f"Bienvenido {username}")
+        
     def forgot_password(self):
-        """Acción recuperar contraseña"""
-        print("Recuperar contraseña")
-        self.show_info("Funcionalidad en desarrollo")
-    
-    def show_error(self, message):
-        """Mostrar mensaje de error"""
-        dialog = ctk.CTkInputDialog(
-            text=message,
-            title="Error"
+        """Recuperar contraseña"""
+        messagebox.showinfo(
+            "Recuperar contraseña",
+            "Contacte al administrador del sistema"
         )
-    
-    def show_success(self, message):
-        """Mostrar mensaje de éxito"""
-        print(f"✓ {message}")
-    
-    def show_info(self, message):
-        """Mostrar mensaje informativo"""
-        print(f"ℹ {message}")
 
 
+# Ejecutar
 if __name__ == "__main__":
-    app = LoginView()
-    app.mainloop()
+    root = ctk.CTk()
+    app = LoginView(root)
+    root.mainloop()
