@@ -1,0 +1,11 @@
+{
+  "host": "localhost",
+  "user": "root",
+  "password": "",
+  "database": "notebox_db",
+  "port": 3306,
+  "charset": "utf8mb4",
+  "autocommit": true,
+  "pool_size": 5,
+  "pool_name": "notebox_pool"
+}

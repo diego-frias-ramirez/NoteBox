@@ -1,0 +1,39 @@
+{
+  "base_dir": ".",
+  "assets": {
+    "root": "assets",
+    "icons": "assets/icons",
+    "images": "assets/images",
+    "styles": "assets/styles"
+  },
+  "config": {
+    "root": "config"
+  },
+  "database": {
+    "root": "database",
+    "migrations": "database/migrations",
+    "seeds": "database/seeds"
+  },
+  "models": {
+    "root": "models"
+  },
+  "views": {
+    "root": "views",
+    "components": "views/components",
+    "pages": "views/pages"
+  },
+  "controllers": {
+    "root": "controllers"
+  },
+  "utils": {
+    "root": "utils"
+  },
+  "exports": {
+    "reports": "exports/reports",
+    "backups": "exports/backups",
+    "logs": "exports/logs"
+  },
+  "temp": {
+    "root": "temp"
+  }
+}

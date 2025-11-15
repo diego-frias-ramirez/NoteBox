@@ -1,0 +1,49 @@
+{
+  "app": {
+    "name": "NoteBox",
+    "version": "1.0.0",
+    "author": "Equipo NoteBox - UTD",
+    "description": "Sistema de Gestión de Inventario para Papelerías"
+  },
+  "client": {
+    "name": "Papelería Valeria",
+    "location": "Durango, México"
+  },
+  "window": {
+    "title": "NoteBox - Sistema de Gestión de Inventario",
+    "width": 1200,
+    "height": 700,
+    "min_width": 1000,
+    "min_height": 600,
+    "resizable": true
+  },
+  "sidebar": {
+    "width": 250,
+    "collapsed_width": 60
+  },
+  "alerts": {
+    "stock_bajo_threshold": 10,
+    "stock_medio_threshold": 50,
+    "dias_sin_movimiento": 30
+  },
+  "formats": {
+    "date_format": "%d/%m/%Y",
+    "datetime_format": "%d/%m/%Y %H:%M:%S",
+    "currency": "MXN",
+    "currency_symbol": "$"
+  },
+  "pagination": {
+    "items_per_page": 20
+  },
+  "validations": {
+    "max_product_name_length": 100,
+    "max_category_name_length": 50,
+    "min_price": 0.01,
+    "max_price": 999999.99,
+    "max_stock": 999999
+  },
+  "backup": {
+    "auto_backup": true,
+    "backup_frequency_days": 7
+  }
+}
