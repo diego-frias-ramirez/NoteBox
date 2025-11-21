@@ -1,14 +1,5 @@
 {
-    "database": {
-        "host": "localhost",
-        "user": "root",
-        "password": "",
-        "port": 3306,
-        "charset": "utf8mb4",
-        "autocommit": true,
-        "pool_size": 5,
-        "pool_name": "notebox_pool"
-    },
+    "database": "notebox_db",
     "application": {
         "name": "NoteBox - Sistema de Gestión de Inventario",
         "version": "1.0.0",
