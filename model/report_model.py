@@ -64,8 +64,8 @@ class ReportModel:
                 SUM(p.stock) as total_unidades,
                 SUM(p.stock * p.precio) as valor_inventario
             FROM categorias c
-            LEFT JOIN productos p ON c.id = p.categoria_id AND p.estado != 'Agotado' -- Opcional: excluir agotados
-            WHERE c.estado != 'Inactiva' -- Opcional: si tienes estado en categorias
+            LEFT JOIN productos p ON c.id = p.categoria_id AND p.estado != 'Agotado'
+            -- WHERE c.estado != 'Inactiva'  <-- ELIMINAR ESTA LÍNEA
             GROUP BY c.id, c.nombre
             ORDER BY c.nombre
         """
@@ -113,3 +113,5 @@ class ReportModel:
         except Exception as e:
             Logger.error_exception(e, "REPORT_MODEL")
             return []
+        
+    

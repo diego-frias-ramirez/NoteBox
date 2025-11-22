@@ -1,220 +1,378 @@
 """
-NoteBox - Vista del Dashboard Principal
+NoteBox - Vista del Dashboard Principal (Corregido)
 Ubicación: view/dashboard_view.py
 """
 
 import customtkinter as ctk
+import tkinter as tk
+from datetime import datetime
+from PIL import Image
+import os
+
 from components.base_view import BaseView
 from model.report_model import ReportModel
 from model.alert_model import AlertModel
 from utils.logger import Logger
-from PIL import Image
-import os
-from datetime import datetime  # Añadido para el saludo
+from utils.helpers import Helpers
 
 class DashboardView(BaseView):
     """Vista del Dashboard Principal."""
     
     def __init__(self, user_data):
-        # === 1. Inicializar todas las variables de instancia PRIMERO ===
         self.inventory_summary = {}
         self.low_stock_products = []
         self.active_alerts = []
-        self.top_products = []
-        self.stat_icons = {}  # <-- ¡ESTA LÍNEA ES CRÍTICA!
-        self.welcome_icon_img = None
+        self.category_data = []
+        self.images = {}
+        self.icon_refs = {}
         
-        # === 2. Instanciar modelos ===
         self.report_model = ReportModel()
         self.alert_model = AlertModel()
         
-        # === 3. Cargar los datos ===
-        self.load_dashboard_data()
+        self.load_data()
         
-        # === 4. Llamar al constructor de la clase base AL FINAL ===
         super().__init__(
             user_data=user_data,
             page_id="dashboard",
             page_title="Dashboard Principal",
-            page_subtitle="Resumen del inventario y alertas"
+            page_subtitle="Bienvenido al sistema de gestión"
         )
     
-    def load_dashboard_data(self):
-        """Carga los datos del dashboard desde los modelos."""
+    def load_data(self):
+        """Carga datos desde la base de datos."""
         try:
-            self.inventory_summary = self.report_model.get_inventory_summary()
-            self.low_stock_products = self.report_model.get_low_stock_products()
-            self.active_alerts = self.alert_model.get_active_alerts()
-            self.top_products = self.report_model.get_top_products(limit=5)
-            Logger.info("Datos del dashboard cargados correctamente", "DASHBOARD_VIEW")
+            self.inventory_summary = self.report_model.get_inventory_summary() or {}
+            self.low_stock_products = self.report_model.get_low_stock_products() or []
+            self.active_alerts = self.alert_model.get_active_alerts() or []
+            self.category_data = self.report_model.get_products_by_category() or []
+            Logger.info("Datos del dashboard cargados", "DASHBOARD")
         except Exception as e:
-            Logger.error(f"Error al cargar datos del dashboard: {e}", "DASHBOARD_VIEW")
-            self.inventory_summary = {}
-            self.low_stock_products = []
-            self.active_alerts = []
-            self.top_products = []
+            Logger.error(f"Error cargando datos: {e}", "DASHBOARD")
     
     def create_content(self):
-        """Crea el contenido específico del dashboard."""
+        """Crea el contenido principal del dashboard."""
+        # Banner de bienvenida
         self.create_welcome_banner()
-        self.create_stats_section()
-        self.create_quick_alerts_section()
-        self.create_low_stock_section()
-        self.create_top_products_section()
+        
+        # Grid principal
+        main_grid = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        main_grid.pack(fill="both", expand=True, pady=(20, 0))
+        
+        # Columna izquierda
+        left_col = ctk.CTkFrame(main_grid, fg_color="transparent")
+        left_col.pack(side="left", fill="both", expand=True, padx=(0, 15))
+        
+        self.create_stats_section(left_col)
+        self.create_chart_section(left_col)
+        
+        # Columna derecha
+        right_col = ctk.CTkFrame(main_grid, fg_color="transparent", width=300)
+        right_col.pack(side="right", fill="y")
+        right_col.pack_propagate(False)
+        
+        self.create_alerts_section(right_col)
     
     def create_welcome_banner(self):
-        """Crea el banner de bienvenida."""
-        banner_frame = ctk.CTkFrame(self.content_frame, fg_color="#F0F9FF", corner_radius=15, height=120)
-        banner_frame.pack(fill="x", pady=(0, 20), padx=0)
-        banner_frame.pack_propagate(False)
+        """Banner de bienvenida."""
+        banner = ctk.CTkFrame(self.content_frame, fg_color="#FFFFFF", corner_radius=20, height=150)
+        banner.pack(fill="x", pady=(0, 0))
+        banner.pack_propagate(False)
         
-        banner_content = ctk.CTkFrame(banner_frame, fg_color="transparent")
-        banner_content.pack(fill="both", expand=True, padx=20, pady=15)
+        content = ctk.CTkFrame(banner, fg_color="transparent")
+        content.pack(side="left", fill="both", expand=True, padx=35, pady=25)
         
-        # Obtener saludo según la hora (SIN Helpers.get_greeting_message)
         hour = datetime.now().hour
-        if hour < 12:
-            greeting = "Buenos días"
-        elif hour < 18:
-            greeting = "Buenas tardes"
-        else:
-            greeting = "Buenas noches"
+        greeting = "Buenos días" if hour < 12 else ("Buenas tardes" if hour < 18 else "Buenas noches")
         
-        text_frame = ctk.CTkFrame(banner_content, fg_color="transparent")
-        text_frame.pack(side="left", fill="y", expand=False)
+        ctk.CTkLabel(
+            content, text=f"Hola ! {greeting}",
+            font=ctk.CTkFont(size=32, weight="bold"), text_color="#00B4D8"
+        ).pack(anchor="w")
         
-        hello_label = ctk.CTkLabel(text_frame, text=f"{greeting},", font=ctk.CTkFont(size=24, weight="bold"), text_color="#0891B2")
-        hello_label.pack(anchor="w")
+        ctk.CTkLabel(
+            content, text=f"De nuevo {self.user_data.get('nombre', 'Usuario')}",
+            font=ctk.CTkFont(size=26, weight="bold"), text_color="#1E293B"
+        ).pack(anchor="w", pady=(5, 0))
         
-        name_label = ctk.CTkLabel(text_frame, text=f"{self.user_data.get('nombre', 'Usuario')}!", font=ctk.CTkFont(size=20, weight="bold"), text_color="#1E293B")
-        name_label.pack(anchor="w", pady=(5, 0))
-        
-        subtitle_label = ctk.CTkLabel(text_frame, text="Aquí está el resumen de tu inventario.", font=ctk.CTkFont(size=12), text_color="#64748B")
-        subtitle_label.pack(anchor="w", pady=(2, 0))
-        
-        # Ícono de bienvenida
-        icon_path = os.path.join(self.base_path, "..", "assets", "icons", "dashboard.png")
+        # Imagen decorativa
+        img_path = os.path.join(self.base_path, "..", "assets", "images", "banner.png")
         try:
-            img = Image.open(icon_path)
-            img = img.resize((80, 80), Image.LANCZOS)
-            self.welcome_icon_img = ctk.CTkImage(light_image=img, dark_image=img)
-            icon_label = ctk.CTkLabel(banner_content, image=self.welcome_icon_img, text="")
-            icon_label.pack(side="right", padx=(0, 20))
-        except FileNotFoundError:
-            pass
+            img = Image.open(img_path)
+            img = img.resize((509, 113), Image.LANCZOS)
+            self.images["banner"] = ctk.CTkImage(light_image=img, dark_image=img, size=(509, 113))
+            ctk.CTkLabel(banner, image=self.images["banner"], text="").pack(side="right", padx=15)
+        except:
+            placeholder = ctk.CTkFrame(banner, fg_color="#F1F5F9", width=400, height=100, corner_radius=15)
+            placeholder.pack(side="right", padx=15)
+            placeholder.pack_propagate(False)
+            ctk.CTkLabel(placeholder, text="🖼️", font=ctk.CTkFont(size=40), text_color="#94A3B8").place(relx=0.5, rely=0.5, anchor="center")
     
-    def create_stats_section(self):
-        """Crea la sección de estadísticas."""
-        title = ctk.CTkLabel(self.content_frame, text="Resumen General del Inventario", font=ctk.CTkFont(size=16, weight="bold"), anchor="w")
-        title.pack(fill="x", pady=(10, 10))
+    def create_stats_section(self, parent):
+        """Tarjetas de estadísticas en grid 2x2."""
+        cards_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        cards_frame.pack(fill="x", pady=(0, 15))
         
-        stats_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-        stats_frame.pack(fill="x", pady=(0, 20))
+        cards_frame.grid_columnconfigure((0, 1), weight=1)
+        cards_frame.grid_rowconfigure((0, 1), weight=1)
         
-        stats_data = [
-            {"label": "Total de Productos", "value": self.inventory_summary.get('total_productos', 0), "color": "#E0F2FE", "icon": "dashboard.png"},
-            {"label": "Disponibles", "value": self.inventory_summary.get('productos_disponibles', 0), "color": "#DCFCE7", "icon": "inventory.png"},
-            {"label": "Stock Bajo", "value": self.inventory_summary.get('productos_stock_bajo', 0), "color": "#FEF3C7", "icon": "movements.png"},
-            {"label": "Agotados", "value": self.inventory_summary.get('productos_agotados', 0), "color": "#FFE4E6", "icon": "reports.png"}
+        total = self.inventory_summary.get('total_productos', 0)
+        disponibles = self.inventory_summary.get('productos_disponibles', 0)
+        stock_bajo = self.inventory_summary.get('productos_stock_bajo', 0)
+        agotados = self.inventory_summary.get('productos_agotados', 0)
+        valor_total = self.inventory_summary.get('valor_total_inventario', 0)
+        
+        cards = [
+            {
+                "title": "Productos Totales",
+                "value": f"{total:,}",
+                "sub": f"↑ Disponibles: {disponibles}",
+                "sub_color": "#10B981",
+                "bg": "#FFFFFF",
+                "icon": "products.png",
+                "icon_bg": "#E0F7FA"
+            },
+            {
+                "title": "Stock Bajo",
+                "value": str(stock_bajo),
+                "sub": "Requieren reabastecimiento",
+                "sub_color": "#64748B",
+                "bg": "#FFFFFF",
+                "icon": "low_stock.png",
+                "icon_bg": "#FEE2E2"
+            },
+            {
+                "title": "Valor del Inventario",
+                "value": Helpers.format_currency(valor_total),
+                "sub": f"{total} productos registrados",
+                "sub_color": "#E0F7FA",
+                "bg": "#00B4D8",
+                "icon": "money.png",
+                "icon_bg": "#0096B4",
+                "text": "#FFFFFF"
+            },
+            {
+                "title": "Alertas Activas",
+                "value": str(len(self.active_alerts)),
+                "sub": f"Agotados: {agotados}",
+                "sub_color": "#64748B",
+                "bg": "#FFFFFF",
+                "icon": "alert.png",
+                "icon_bg": "#FEF3C7"
+            }
         ]
         
-        for i, stat in enumerate(stats_data):
-            card = self.create_stat_card(stats_frame, stat)
-            card.grid(row=0, column=i, sticky="ew", padx=5)
-            stats_frame.grid_columnconfigure(i, weight=1)
+        for i, c in enumerate(cards):
+            card = self.create_stat_card(cards_frame, c)
+            card.grid(row=i//2, column=i%2, sticky="nsew", padx=8, pady=8)
     
-    def create_stat_card(self, parent, stat_data):
+    def create_stat_card(self, parent, data):
         """Crea una tarjeta de estadística."""
-        card = ctk.CTkFrame(parent, fg_color=stat_data["color"], corner_radius=10, width=200, height=100)
-        card.grid_propagate(False)
+        text_color = data.get("text", "#1E293B")
+        is_highlight = data["bg"] == "#00B4D8"
+        
+        card = ctk.CTkFrame(parent, fg_color=data["bg"], corner_radius=15, height=125)
+        card.pack_propagate(False)
         
         inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=15, pady=10)
+        inner.pack(fill="both", expand=True, padx=20, pady=15)
         
-        # Cargar ícono
-        icon_path = os.path.join(self.base_path, "..", "assets", "icons", stat_data["icon"])
+        # Header con título e icono
+        header = ctk.CTkFrame(inner, fg_color="transparent")
+        header.pack(fill="x")
+        
+        ctk.CTkLabel(
+            header, text=data["title"], font=ctk.CTkFont(size=13),
+            text_color="#E0F7FA" if is_highlight else "#64748B"
+        ).pack(side="left")
+        
+        # Icono desde archivo
+        icon_frame = ctk.CTkFrame(header, fg_color=data["icon_bg"], width=38, height=38, corner_radius=10)
+        icon_frame.pack(side="right")
+        icon_frame.pack_propagate(False)
+        
+        icon_path = os.path.join(self.base_path, "..", "assets", "icons", data["icon"])
         try:
             img = Image.open(icon_path)
-            img = img.resize((24, 24), Image.LANCZOS)
-            icon_img = ctk.CTkImage(light_image=img, dark_image=img)
-            # Ahora SÍ existe self.stat_icons
-            self.stat_icons[stat_data["icon"]] = icon_img
-            ctk.CTkLabel(inner, image=icon_img, text="").pack(anchor="w")
-        except FileNotFoundError:
-            pass
+            img = img.resize((20, 20), Image.LANCZOS)
+            icon_img = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
+            self.icon_refs[data["icon"]] = icon_img
+            ctk.CTkLabel(icon_frame, image=icon_img, text="").place(relx=0.5, rely=0.5, anchor="center")
+        except:
+            ctk.CTkLabel(icon_frame, text="•", font=ctk.CTkFont(size=16)).place(relx=0.5, rely=0.5, anchor="center")
         
-        ctk.CTkLabel(inner, text=str(stat_data["value"]), font=ctk.CTkFont(size=24, weight="bold")).pack(anchor="w", pady=(5, 2))
-        ctk.CTkLabel(inner, text=stat_data["label"], font=ctk.CTkFont(size=12)).pack(anchor="w")
+        # Valor
+        ctk.CTkLabel(
+            inner, text=data["value"],
+            font=ctk.CTkFont(size=26, weight="bold"), text_color=text_color
+        ).pack(anchor="w", pady=(8, 3))
+        
+        # Subtítulo
+        ctk.CTkLabel(
+            inner, text=data["sub"],
+            font=ctk.CTkFont(size=11), text_color=data["sub_color"]
+        ).pack(anchor="w")
         
         return card
     
-    def create_quick_alerts_section(self):
-        """Crea la sección de alertas rápidas."""
-        title = ctk.CTkLabel(self.content_frame, text="Alertas Rápidas", font=ctk.CTkFont(size=16, weight="bold"), anchor="w")
-        title.pack(fill="x", pady=(10, 10))
+    def create_chart_section(self, parent):
+        """Gráfico de barras con matplotlib."""
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         
-        alerts_frame = ctk.CTkFrame(self.content_frame, fg_color="#FEEBEE", corner_radius=10)
-        alerts_frame.pack(fill="x", pady=(0, 20))
+        chart_card = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15, height=280)
+        chart_card.pack(fill="x", pady=(10, 0))
+        chart_card.pack_propagate(False)
         
-        if self.active_alerts:
-            for alert in self.active_alerts[:3]:
-                text = f"[{alert['tipo']}] {alert['descripcion']}"
-                ctk.CTkLabel(alerts_frame, text=text, font=ctk.CTkFont(size=12), text_color="#B91C1C", anchor="w", padx=15, pady=10).pack(fill="x", padx=10, pady=2, anchor="w")
+        ctk.CTkLabel(
+            chart_card, text="Inventario por Categoría",
+            font=ctk.CTkFont(size=16, weight="bold"), text_color="#1E293B"
+        ).pack(anchor="w", padx=25, pady=(20, 10))
+        
+        # Preparar datos reales
+        if self.category_data:
+            categories = [c.get('categoria', 'Sin cat.')[:12] for c in self.category_data[:5]]
+            stocks = [int(c.get('total_unidades', 0) or 0) for c in self.category_data[:5]]
         else:
-            ctk.CTkLabel(alerts_frame, text="No hay alertas activas.", font=ctk.CTkFont(size=12), text_color="#10B981", anchor="w", padx=15, pady=10).pack(fill="x", padx=10, pady=10)
-    
-    def create_low_stock_section(self):
-        """Crea la sección de productos con stock bajo."""
-        title = ctk.CTkLabel(self.content_frame, text="Productos con Stock Bajo", font=ctk.CTkFont(size=16, weight="bold"), anchor="w")
-        title.pack(fill="x", pady=(10, 10))
+            categories, stocks = [], []
         
+        # Si no hay datos
+        if not categories or all(s == 0 for s in stocks):
+            ctk.CTkLabel(
+                chart_card, text="No hay datos para mostrar",
+                font=ctk.CTkFont(size=12), text_color="#94A3B8"
+            ).pack(expand=True)
+            return
+        
+        # Crear figura
+        fig, ax = plt.subplots(figsize=(5, 2.5), dpi=100)
+        fig.patch.set_facecolor('#FFFFFF')
+        ax.set_facecolor('#FFFFFF')
+        
+        # Barras
+        bars = ax.bar(categories, stocks, color='#00B4D8', edgecolor='#00B4D8', width=0.6)
+        
+        # Estilo
+        ax.set_ylabel('Unidades', fontsize=9, color='#64748B')
+        ax.tick_params(axis='x', labelsize=8, colors='#64748B', rotation=15)
+        ax.tick_params(axis='y', labelsize=8, colors='#64748B')
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#E2E8F0')
+        ax.spines['bottom'].set_color('#E2E8F0')
+        ax.grid(axis='y', color='#E2E8F0', linestyle='--', linewidth=0.5, alpha=0.7)
+        
+        # Valores sobre barras
+        for bar in bars:
+            h = bar.get_height()
+            if h > 0:
+                ax.annotate(f'{int(h)}', xy=(bar.get_x() + bar.get_width()/2, h),
+                           xytext=(0, 3), textcoords="offset points",
+                           ha='center', va='bottom', fontsize=8, color='#1E293B')
+        
+        plt.tight_layout()
+        
+        # Integrar en tkinter
+        canvas = FigureCanvasTkAgg(fig, chart_card)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True, padx=15, pady=(0, 15))
+    
+    def create_alerts_section(self, parent):
+        """Panel de alertas lateral."""
+        panel = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
+        panel.pack(fill="both", expand=True)
+        
+        ctk.CTkLabel(
+            panel, text="Últimas Alertas",
+            font=ctk.CTkFont(size=16, weight="bold"), text_color="#1E293B"
+        ).pack(anchor="w", padx=20, pady=(20, 15))
+        
+        # Contenedor de alertas (sin scroll)
+        alerts_container = ctk.CTkFrame(panel, fg_color="transparent")
+        alerts_container.pack(fill="x", padx=12, pady=(0, 10))
+        
+        # Mostrar máximo 5 alertas
         if self.low_stock_products:
-            header = ctk.CTkFrame(self.content_frame, fg_color="#F1F5F9", corner_radius=5)
-            header.pack(fill="x", pady=(0, 5))
-            for i, h in enumerate(["Código", "Nombre", "Categoría", "Stock", "Mínimo"]):
-                ctk.CTkLabel(header, text=h, font=ctk.CTkFont(size=12, weight="bold"), width=150, anchor="w", padx=10).grid(row=0, column=i, sticky="w", padx=2)
-            
-            for i, p in enumerate(self.low_stock_products[:5]):
-                color = "#FFFFFF" if i % 2 == 0 else "#F8FAFC"
-                row = ctk.CTkFrame(self.content_frame, fg_color=color, height=30, corner_radius=0)
-                row.pack(fill="x", pady=1)
-                row.pack_propagate(False)
-                values = [p.get('codigo', 'N/A'), p.get('nombre', 'N/A'), p.get('categoria_nombre', 'N/A'), str(p.get('stock', 0)), str(p.get('stock_minimo', 0))]
-                for j, v in enumerate(values):
-                    ctk.CTkLabel(row, text=v, font=ctk.CTkFont(size=12), width=150, anchor="w", padx=10).grid(row=0, column=j, sticky="w", padx=2)
+            for p in self.low_stock_products[:5]:
+                stock = p.get('stock', 0)
+                alert_type = "danger" if stock == 0 else "warning"
+                name = p.get('nombre', 'Producto')[:22]
+                title = f"{'Agotado' if stock == 0 else 'Stock bajo'}: {name}"
+                detail = f"Quedan {stock} unidades"
+                self.create_alert_item(alerts_container, alert_type, title, detail)
         else:
-            ctk.CTkLabel(self.content_frame, text="No hay productos con stock bajo.", font=ctk.CTkFont(size=12), text_color="#10B981", anchor="w", padx=15, pady=10).pack(fill="x", pady=10)
-    
-    def create_top_products_section(self):
-        """Crea la sección de productos top."""
-        title = ctk.CTkLabel(self.content_frame, text="Productos Más Valiosos", font=ctk.CTkFont(size=16, weight="bold"), anchor="w")
-        title.pack(fill="x", pady=(10, 10))
+            ctk.CTkLabel(
+                alerts_container, text="✅ No hay alertas activas",
+                font=ctk.CTkFont(size=12), text_color="#10B981"
+            ).pack(pady=20)
         
-        if self.top_products:
-            header = ctk.CTkFrame(self.content_frame, fg_color="#F1F5F9", corner_radius=5)
-            header.pack(fill="x", pady=(0, 5))
-            for i, h in enumerate(["Código", "Nombre", "Categoría", "Stock", "Precio", "Valor"]):
-                ctk.CTkLabel(header, text=h, font=ctk.CTkFont(size=12, weight="bold"), width=120, anchor="w", padx=10).grid(row=0, column=i, sticky="w", padx=2)
-            
-            for i, p in enumerate(self.top_products):
-                color = "#FFFFFF" if i % 2 == 0 else "#F8FAFC"
-                row = ctk.CTkFrame(self.content_frame, fg_color=color, height=30, corner_radius=0)
-                row.pack(fill="x", pady=1)
-                row.pack_propagate(False)
-                from utils.helpers import Helpers
-                values = [
-                    p.get('codigo', 'N/A'),
-                    p.get('nombre', 'N/A'),
-                    p.get('categoria_nombre', 'N/A'),
-                    str(p.get('stock', 0)),
-                    Helpers.format_currency(p.get('precio', 0)),
-                    Helpers.format_currency(p.get('valor_total', 0))
-                ]
-                for j, v in enumerate(values):
-                    ctk.CTkLabel(row, text=v, font=ctk.CTkFont(size=12), width=120, anchor="w", padx=10).grid(row=0, column=j, sticky="w", padx=2)
-        else:
-            ctk.CTkLabel(self.content_frame, text="No hay datos disponibles.", font=ctk.CTkFont(size=12), text_color="#6B7280", anchor="w", padx=15, pady=10).pack(fill="x", pady=10)
-
+        # Botón ver todas
+        ctk.CTkButton(
+            panel, text="Ver todas las alertas →",
+            fg_color="transparent", text_color="#00B4D8",
+            hover_color="#E0F7FA", font=ctk.CTkFont(size=12),
+            command=lambda: self.navigate_to("inventario")
+        ).pack(pady=(10, 20))
+    
+    def create_alert_item(self, parent, alert_type, title, detail):
+        """Crea un item de alerta."""
+        styles = {
+            "warning": {"bg": "#FEF3C7", "icon": "alert.png"},
+            "danger": {"bg": "#FEE2E2", "icon": "alert_yellow.png"},
+            "info": {"bg": "#E0F2FE", "icon": "alert_info.png"}
+        }
+        style = styles.get(alert_type, styles["info"])
+        
+        item = ctk.CTkFrame(parent, fg_color=style["bg"], corner_radius=10, height=65)
+        item.pack(fill="x", pady=4)
+        item.pack_propagate(False)
+        
+        inner = ctk.CTkFrame(item, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=12, pady=10)
+        
+        # Icono desde archivo
+        icon_path = os.path.join(self.base_path, "..", "assets", "icons", style["icon"])
+        try:
+            img = Image.open(icon_path)
+            img = img.resize((18, 18), Image.LANCZOS)
+            icon_img = ctk.CTkImage(light_image=img, dark_image=img, size=(18, 18))
+            self.icon_refs[style["icon"]] = icon_img
+            ctk.CTkLabel(inner, image=icon_img, text="").pack(side="left", padx=(0, 10))
+        except:
+            ctk.CTkLabel(inner, text="!", font=ctk.CTkFont(size=14, weight="bold")).pack(side="left", padx=(0, 10))
+        
+        text_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        text_frame.pack(side="left", fill="y")
+        
+        ctk.CTkLabel(text_frame, text=title, font=ctk.CTkFont(size=11, weight="bold"), text_color="#1E293B").pack(anchor="w")
+        ctk.CTkLabel(text_frame, text=detail, font=ctk.CTkFont(size=10), text_color="#64748B").pack(anchor="w")
+    
+    def navigate_to(self, page_id):
+        """Navega a otra página."""
+        self.destroy()
+        
+        if page_id == "dashboard":
+            DashboardView(self.user_data).run()
+        elif page_id == "inventario":
+            from view.inventory_view import InventarioView
+            InventarioView(self.user_data).run()
+        elif page_id == "movimientos":
+            from view.movements_view import MovimientosView
+            MovimientosView(self.user_data).run()
+        elif page_id == "reportes":
+            from view.reports_view import ReportesView
+            ReportesView(self.user_data).run()
+        elif page_id == "usuarios":
+            from view.users_view import UsuariosView
+            UsuariosView(self.user_data).run()
+        elif page_id == "configuracion":
+            from view.settings_view import ConfiguracionView
+            ConfiguracionView(self.user_data).run()
+        elif page_id == "ayuda":
+            from view.help_view import AyudaView
+            AyudaView(self.user_data).run()
+    
     def get_notification_count(self):
-        """Obtiene el número de notificaciones."""
         return len(self.active_alerts)
+
