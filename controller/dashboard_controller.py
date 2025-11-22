@@ -2,90 +2,55 @@
 NoteBox - Controlador del Dashboard
 """
 
-from model.product_model import ProductModel
-from model.category_model import CategoryModel
 from model.report_model import ReportModel
+from model.alert_model import AlertModel  # Importar el modelo de alertas (de base de datos)
 from utils.logger import Logger
-from utils.helpers import Helpers
+# Opcional: Si necesitas usar directamente la lógica de presentación de alertas en el controlador
+# from utils.alerts import alert_manager # (Solo si es necesario llamar métodos específicos aquí)
 
 class DashboardController:
-    """Controlador para el dashboard principal"""
-    
-    def __init__(self):
-        self.product_model = ProductModel
-        self.category_model = CategoryModel
-        self.report_model = ReportModel
-    
-    def get_dashboard_data(self):
-        """Obtiene todos los datos necesarios para el dashboard"""
+    """Controlador para gestionar la lógica del dashboard."""
+
+    def __init__(self, user_data):
+        self.user_data = user_data
+        self.report_model = ReportModel()
+        self.alert_model = AlertModel() # Usar el modelo de alertas de base de datos
+
+    def get_dashboard_summary(self):
+        """Obtiene los datos resumidos para mostrar en el dashboard."""
         try:
-            # Obtener resumen del inventario
-            summary = self.report_model.get_inventory_summary()
-            
+            # Obtener resumen general del inventario (AHORA llama al nuevo código en report_model.py)
+            inventory_summary = self.report_model.get_inventory_summary()
+
             # Obtener productos con stock bajo
-            low_stock = self.product_model.get_low_stock()
-            
-            # Obtener productos por categoría
-            by_category = self.report_model.get_products_by_category()
-            
-            # Obtener top productos
-            top_products = self.report_model.get_top_products(5)
-            
-            data = {
-                'summary': summary if summary else {
-                    'total_productos': 0,
-                    'productos_ok': 0,
-                    'productos_stock_bajo': 0,
-                    'productos_sin_stock': 0,
-                    'unidades_totales': 0,
-                    'valor_total_inventario': 0.0
-                },
-                'low_stock': low_stock,
-                'by_category': by_category,
-                'top_products': top_products
-            }
-            
+            low_stock_products = self.report_model.get_low_stock_products()
+
+            # Obtener alertas activas (usando el modelo de base de datos)
+            active_alerts = self.alert_model.get_active_alerts()
+
+            # Obtener productos de ejemplo (top 5 por valor)
+            top_products = self.report_model.get_top_products(limit=5)
+
             Logger.info("Datos del dashboard cargados correctamente", "DASHBOARD_CONTROLLER")
-            return True, data
-            
+
+            return {
+                "inventory_summary": inventory_summary,
+                "low_stock_products": low_stock_products,
+                "active_alerts": active_alerts, # Solo los datos de la BD
+                "top_products": top_products
+            }
         except Exception as e:
-            Logger.error_exception(e, "DASHBOARD_CONTROLLER")
-            return False, None
-    
-    def get_statistics(self):
-        """Obtiene estadísticas del inventario"""
-        try:
-            stats = self.report_model.get_inventory_summary()
-            
-            if stats:
-                # Formatear valores
-                formatted_stats = {
-                    'total_productos': Helpers.format_number(stats['total_productos']),
-                    'productos_ok': Helpers.format_number(stats['productos_ok']),
-                    'productos_stock_bajo': Helpers.format_number(stats['productos_stock_bajo']),
-                    'productos_sin_stock': Helpers.format_number(stats['productos_sin_stock']),
-                    'unidades_totales': Helpers.format_number(stats['unidades_totales']),
-                    'valor_total': Helpers.format_currency(stats['valor_total_inventario'])
-                }
-                
-                return True, formatted_stats
-            
-            return False, None
-            
-        except Exception as e:
-            Logger.error_exception(e, "DASHBOARD_CONTROLLER")
-            return False, None
-    
-    def get_alerts_count(self):
-        """Obtiene el conteo de alertas"""
-        try:
-            low_stock = self.product_model.get_low_stock()
-            return len(low_stock)
-        except Exception as e:
-            Logger.error_exception(e, "DASHBOARD_CONTROLLER")
-            return 0
-    
-    def refresh_data(self):
-        """Refresca los datos del dashboard"""
-        Logger.info("Refrescando datos del dashboard", "DASHBOARD_CONTROLLER")
-        return self.get_dashboard_data()
+            # CORREGIDO: Cambiar error_exception por error
+            Logger.error(f"Error al cargar datos del dashboard: {e}", "DASHBOARD_CONTROLLER")
+            return {
+                "inventory_summary": None, # O un diccionario vacío con valores por defecto
+                "low_stock_products": [],
+                "active_alerts": [],
+                "top_products": []
+            }
+
+    def get_user_info(self):
+        """Devuelve la información del usuario logueado."""
+        return self.user_data
+
+    # Otros métodos del controlador...

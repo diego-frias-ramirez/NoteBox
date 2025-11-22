@@ -43,7 +43,7 @@ class LoginController:
         # Autenticar con el modelo
         user_data = self.user_model.authenticate(username, password)
         
-        if user_data:
+        if user_data and user_data.get('estado') == 'Activo':
             # Actualizar último acceso
             self.user_model.update_last_access(user_data['id'])
             Logger.log_user_action("LOGIN_EXITOSO", username)

@@ -210,3 +210,8 @@ FROM productos p
 LEFT JOIN categorias c ON p.categoria_id = c.id
 WHERE p.estado IN ('Stock Bajo', 'Agotado') OR p.dias_sin_movimiento > 30
 ORDER BY p.estado DESC, p.stock ASC;
+
+COMMIT;
+
+-- Confirmar creación
+SELECT 'Base de datos NoteBox creada exitosamente' AS mensaje;
