@@ -1,128 +1,70 @@
 """
-NoteBox - Controlador de Login
+NoteBox - Controlador del Login
 """
 
 from model.user_model import UserModel
-from model.database import Database
 from utils.logger import Logger
-from utils.alerts import Alerts
+from utils.validators import Validators
 
 class LoginController:
-    """Controlador para manejar el inicio de sesión"""
+    """Controlador para gestionar el login de usuarios."""
     
     def __init__(self):
-        self.current_user = None
-        self.is_authenticated = False
+        self.user_model = UserModel()
     
-    def validate_credentials(self, username, password):
+    def authenticate_user(self, username, password):
         """
-        Valida las credenciales del usuario
+        Autentica un usuario con sus credenciales.
+        
+        Args:
+            username (str): Nombre de usuario
+            password (str): Contraseña
         
         Returns:
-            tuple: (success: bool, message: str, user_data: dict)
+            dict: Datos del usuario si es válido, None si no
         """
-        try:
-            # Validar campos no vacíos
-            if not username or not password:
-                return False, "Por favor ingrese usuario y contraseña", None
-            
-            # Buscar usuario en la base de datos
-            user_data = UserModel.authenticate(username, password)
-            
-            if user_data:
-                # Verificar estado del usuario
-                if user_data['estado'] != 'Activo':
-                    Logger.log_user_action(
-                        "Intento de login con usuario inactivo", 
-                        username
-                    )
-                    return False, "Usuario inactivo. Contacte al administrador", None
-                
-                # Login exitoso
-                self.current_user = user_data
-                self.is_authenticated = True
-                
-                # Actualizar último acceso
-                UserModel.update_last_access(user_data['id'])
-                
-                Logger.log_user_action(
-                    "Inicio de sesión exitoso", 
-                    f"{username} ({user_data['rol']})"
-                )
-                
-                return True, "Inicio de sesión exitoso", user_data
-            else:
-                Logger.log_user_action(
-                    "Intento de inicio de sesión fallido - Credenciales incorrectas", 
-                    username
-                )
-                return False, "Usuario o contraseña incorrectos", None
-                
-        except Exception as e:
-            Logger.error_exception(e, "LOGIN_CONTROLLER")
-            return False, "Error al validar credenciales. Intente nuevamente", None
-    
-    def logout(self):
-        """Cierra la sesión del usuario"""
-        if self.current_user:
-            Logger.log_user_action(
-                "Cierre de sesión", 
-                self.current_user['usuario']
-            )
+        # Validar entradas
+        if not username or not password:
+            Logger.warning("Intento de login sin usuario o contraseña", "LOGIN_CONTROLLER")
+            return None
         
-        self.current_user = None
-        self.is_authenticated = False
-        return True
+        # Validar formato de usuario
+        is_valid, msg = Validators.validate_not_empty(username, "Usuario")
+        if not is_valid:
+            Logger.warning(f"Validación fallida: {msg}", "LOGIN_CONTROLLER")
+            return None
+        
+        # Validar formato de contraseña
+        is_valid, msg = Validators.validate_not_empty(password, "Contraseña")
+        if not is_valid:
+            Logger.warning(f"Validación fallida: {msg}", "LOGIN_CONTROLLER")
+            return None
+        
+        # Autenticar con el modelo
+        user_data = self.user_model.authenticate(username, password)
+        
+        if user_data:
+            # Actualizar último acceso
+            self.user_model.update_last_access(user_data['id'])
+            Logger.log_user_action("LOGIN_EXITOSO", username)
+            return user_data
+        else:
+            Logger.log_user_action("LOGIN_FALLIDO", username)
+            return None
     
-    def get_current_user(self):
-        """Obtiene el usuario actual"""
-        return self.current_user
-    
-    def is_logged_in(self):
-        """Verifica si hay un usuario autenticado"""
-        return self.is_authenticated
-    
-    def is_admin(self):
-        """Verifica si el usuario actual es administrador"""
-        if self.current_user:
-            return self.current_user['rol'] == 'Admin'
-        return False
-    
-    def test_database_connection(self):
-        """Prueba la conexión a la base de datos"""
-        try:
-            success = Database.test_connection()
-            if success:
-                Logger.success("Test de conexión exitoso", "LOGIN_CONTROLLER")
-            else:
-                Logger.error("Test de conexión fallido", "LOGIN_CONTROLLER")
-            return success
-        except Exception as e:
-            Logger.error_exception(e, "LOGIN_CONTROLLER")
-            return False
-    
-    def get_user_permissions(self):
+    def remember_user(self, username, remember):
         """
-        Obtiene los permisos del usuario actual
-        En v1.0 solo diferenciamos Admin y Empleado
+        Maneja la opción de recordar usuario.
+        
+        Args:
+            username (str): Nombre de usuario
+            remember (bool): Si se debe recordar el usuario
         """
-        if not self.current_user:
-            return {
-                'can_add_products': False,
-                'can_edit_products': False,
-                'can_delete_products': False,
-                'can_manage_users': False,
-                'can_view_reports': False,
-                'can_manage_settings': False
-            }
-        
-        is_admin = self.current_user['rol'] == 'Admin'
-        
-        return {
-            'can_add_products': True,  # Todos pueden agregar
-            'can_edit_products': True,  # Todos pueden editar
-            'can_delete_products': is_admin,  # Solo admin puede eliminar
-            'can_manage_users': is_admin,  # Solo admin
-            'can_view_reports': True,  # Todos pueden ver reportes
-            'can_manage_settings': is_admin  # Solo admin
-        }
+        # Aquí puedes implementar la lógica para guardar el usuario en un archivo
+        # o en una base de datos local para recordarlo
+        if remember:
+            # Guardar usuario en sesión
+            Logger.info(f"Usuario {username} recordado", "LOGIN_CONTROLLER")
+        else:
+            # Limpiar sesión
+            Logger.info(f"Usuario {username} no recordado", "LOGIN_CONTROLLER")

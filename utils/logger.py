@@ -10,10 +10,23 @@ from datetime import datetime
 class Logger:
     """Clase para registrar eventos y errores del sistema"""
     
+    # Obtener la ruta absoluta del directorio actual (donde está logger.py)
+    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+    
+    # Construir la ruta absoluta al archivo paths.json
+    PATHS_FILE = os.path.join(CURRENT_DIR, '..', 'config', 'paths.json')
+    
     # Cargar rutas desde paths.json
-    with open('config/paths.json', 'r', encoding='utf-8') as f:
-        paths = json.load(f)
-        LOG_DIR = paths['exports']['logs']
+    try:
+        with open(PATHS_FILE, 'r', encoding='utf-8') as f:
+            paths = json.load(f)
+            LOG_DIR = paths['logs']['app_log']
+    except FileNotFoundError:
+        print(f"Error: No se encontró el archivo {PATHS_FILE}")
+        LOG_DIR = "../logs/app.log"  # Fallback
+    except json.JSONDecodeError:
+        print(f"Error: El archivo {PATHS_FILE} no tiene un formato JSON válido.")
+        LOG_DIR = "../logs/app.log"  # Fallback
     
     # Tipos de log
     INFO = "INFO"
@@ -25,14 +38,14 @@ class Logger:
     @staticmethod
     def _ensure_log_dir():
         """Asegura que el directorio de logs exista"""
-        if not os.path.exists(Logger.LOG_DIR):
-            os.makedirs(Logger.LOG_DIR)
+        if not os.path.exists(os.path.dirname(Logger.LOG_DIR)):
+            os.makedirs(os.path.dirname(Logger.LOG_DIR))
     
     @staticmethod
     def _get_log_filename():
         """Genera el nombre del archivo de log basado en la fecha actual"""
         today = datetime.now().strftime("%Y-%m-%d")
-        return os.path.join(Logger.LOG_DIR, f"notebox_{today}.log")
+        return os.path.join(os.path.dirname(Logger.LOG_DIR), f"notebox_{today}.log")
     
     @staticmethod
     def _format_message(level, message, module=None):
@@ -124,9 +137,9 @@ class Logger:
             current_time = datetime.now()
             deleted_count = 0
             
-            for filename in os.listdir(Logger.LOG_DIR):
+            for filename in os.listdir(os.path.dirname(Logger.LOG_DIR)):
                 if filename.endswith('.log'):
-                    filepath = os.path.join(Logger.LOG_DIR, filename)
+                    filepath = os.path.join(os.path.dirname(Logger.LOG_DIR), filename)
                     file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
                     
                     # Si el archivo tiene más de X días

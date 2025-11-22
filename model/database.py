@@ -1,69 +1,91 @@
 """
-NoteBox - Configuración y conexión a la base de datos
+NoteBox - Sistema de Gestión de Inventario
+Módulo de conexión a la base de datos MySQL usando PyMySQL
 """
 
 import pymysql
 import json
+import os
 from utils.logger import Logger
 
 class Database:
-    """Clase para manejar la conexión a la base de datos"""
-    
+    """Clase para gestionar la conexión a la base de datos MySQL."""
+
     _connection = None
     _config = None
-    
+
     @classmethod
     def load_config(cls):
-        """Carga la configuración de la base de datos"""
+        """Carga la configuración de la base de datos desde db_config.json."""
         if cls._config is None:
             try:
-                with open('config/db_config.json', 'r', encoding='utf-8') as f:
+                # Obtener la ruta absoluta del directorio actual (donde está database.py)
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                
+                # Construir la ruta absoluta al archivo db_config.json
+                db_config_path = os.path.join(current_dir, '..', 'config', 'db_config.json')
+                
+                with open(db_config_path, 'r', encoding='utf-8') as f:
                     cls._config = json.load(f)
+                    
+                # Seleccionar el entorno actual
+                current_env = cls._config.get('current_environment', 'development')
+                cls._config = cls._config[current_env]
+                
             except FileNotFoundError:
-                Logger.error("Archivo db_config.json no encontrado", "DATABASE")
-                raise
+                error_msg = "Archivo db_config.json no encontrado"
+                Logger.error(error_msg, "DATABASE")
+                raise Exception(error_msg)
             except json.JSONDecodeError:
-                Logger.error("Error al leer db_config.json", "DATABASE")
-                raise
+                error_msg = "Error al leer db_config.json"
+                Logger.error(error_msg, "DATABASE")
+                raise Exception(error_msg)
+            except KeyError:
+                error_msg = "Entorno actual no definido en db_config.json"
+                Logger.error(error_msg, "DATABASE")
+                raise Exception(error_msg)
+        
         return cls._config
-    
+
     @classmethod
     def get_connection(cls):
-        """Obtiene o crea una conexión a la base de datos"""
+        """Obtiene o crea una conexión a la base de datos."""
         try:
+            config = cls.load_config()
+            
+            # Verificar si la conexión existe y está abierta
             if cls._connection is None or not cls._connection.open:
-                config = cls.load_config()
-                
                 cls._connection = pymysql.connect(
-                    host=config['host'],
-                    user=config['user'],
-                    password=config['password'],
-                    database=config['database'],
-                    port=config['port'],
-                    charset=config.get('charset', 'utf8mb4'),
-                    autocommit=config.get('autocommit', True),
-                    cursorclass=pymysql.cursors.DictCursor
+                    host=config['database']['host'],
+                    user=config['database']['user'],
+                    password=config['database']['password'],
+                    database=config['database']['database'],
+                    port=config['database']['port'],
+                    charset=config['database'].get('charset', 'utf8mb4'),
+                    autocommit=config['database'].get('autocommit', True),
+                    cursorclass=pymysql.cursors.DictCursor,
+                    connect_timeout=config['database'].get('connect_timeout', 10)
                 )
-                
                 Logger.success("Conexión a base de datos establecida", "DATABASE")
             
             return cls._connection
             
         except pymysql.Error as e:
-            Logger.error(f"Error al conectar a la base de datos: {e}", "DATABASE")
-            return None
-    
+            error_msg = f"Error al conectar a la base de datos: {e}"
+            Logger.error(error_msg, "DATABASE")
+            raise Exception(error_msg)
+
     @classmethod
     def close_connection(cls):
-        """Cierra la conexión a la base de datos"""
+        """Cierra la conexión a la base de datos."""
         if cls._connection and cls._connection.open:
             cls._connection.close()
             cls._connection = None
             Logger.info("Conexión a base de datos cerrada", "DATABASE")
-    
+
     @classmethod
     def test_connection(cls):
-        """Prueba la conexión a la base de datos"""
+        """Prueba la conexión a la base de datos."""
         try:
             conn = cls.get_connection()
             if conn:
@@ -74,48 +96,50 @@ class Database:
                 return True
             return False
         except pymysql.Error as e:
-            Logger.error(f"Test de conexión fallido: {e}", "DATABASE")
+            error_msg = f"Test de conexión fallido: {e}"
+            Logger.error(error_msg, "DATABASE")
             return False
-    
+
     @classmethod
     def create_database(cls):
-        """Crea la base de datos si no existe"""
+        """Crea la base de datos si no existe."""
         try:
             config = cls.load_config()
             
             # Conectar sin especificar base de datos
             conn = pymysql.connect(
-                host=config['host'],
-                user=config['user'],
-                password=config['password'],
-                port=config['port'],
-                charset=config.get('charset', 'utf8mb4')
+                host=config['database']['host'],
+                user=config['database']['user'],
+                password=config['database']['password'],
+                port=config['database']['port'],
+                charset=config['database'].get('charset', 'utf8mb4'),
+                connect_timeout=config['database'].get('connect_timeout', 10)
             )
             
             with conn.cursor() as cursor:
-                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {config['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-                Logger.success(f"Base de datos '{config['database']}' verificada/creada", "DATABASE")
+                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {config['database']['database']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+                Logger.success(f"Base de datos '{config['database']['database']}' verificada/creada", "DATABASE")
             
             conn.close()
             return True
             
         except pymysql.Error as e:
-            Logger.error(f"Error al crear base de datos: {e}", "DATABASE")
+            error_msg = f"Error al crear base de datos: {e}"
+            Logger.error(error_msg, "DATABASE")
             return False
-    
+
     @classmethod
     def execute_query(cls, query, params=None, fetch=False):
         """
-        Ejecuta una consulta SQL
+        Ejecuta una consulta SQL.
         
         Args:
-            query: Consulta SQL a ejecutar
-            params: Parámetros para la consulta (opcional)
-            fetch: Si True, retorna los resultados
+            query (str): Consulta SQL a ejecutar.
+            params (tuple/list/dict, optional): Parámetros para la consulta.
+            fetch (bool): Si es True, retorna los resultados.
         
         Returns:
-            Si fetch=True: lista de resultados
-            Si fetch=False: número de filas afectadas o ID del último registro insertado
+            list/dict/int: Resultados de la consulta, número de filas afectadas o ID del último registro insertado.
         """
         try:
             conn = cls.get_connection()
@@ -135,21 +159,21 @@ class Database:
                     return cursor.rowcount
                     
         except pymysql.Error as e:
-            Logger.error(f"Error ejecutando query: {e}", "DATABASE")
-            Logger.debug(f"Query: {query}", "DATABASE")
-            return None
-    
+            error_msg = f"Error ejecutando query: {e}\nQuery: {query}"
+            Logger.error(error_msg, "DATABASE")
+            raise Exception(error_msg)
+
     @classmethod
     def execute_many(cls, query, params_list):
         """
-        Ejecuta una consulta múltiples veces con diferentes parámetros
+        Ejecuta una consulta múltiples veces con diferentes parámetros.
         
         Args:
-            query: Consulta SQL a ejecutar
-            params_list: Lista de tuplas con parámetros
+            query (str): Consulta SQL a ejecutar.
+            params_list (list of tuples): Lista de tuplas con parámetros.
         
         Returns:
-            Número de filas afectadas
+            int: Número de filas afectadas.
         """
         try:
             conn = cls.get_connection()
@@ -161,12 +185,13 @@ class Database:
                 return cursor.rowcount
                 
         except pymysql.Error as e:
-            Logger.error(f"Error ejecutando executemany: {e}", "DATABASE")
-            return 0
-    
+            error_msg = f"Error ejecutando executemany: {e}\nQuery: {query}"
+            Logger.error(error_msg, "DATABASE")
+            raise Exception(error_msg)
+
     @classmethod
     def init_database(cls):
-        """Inicializa la base de datos con las tablas necesarias"""
+        """Inicializa la base de datos con las tablas necesarias."""
         try:
             # Primero crear la base de datos
             cls.create_database()
@@ -176,32 +201,42 @@ class Database:
             if not conn:
                 return False
             
+            # Construir la ruta absoluta al archivo db_schema.sql
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            sql_script_path = os.path.join(current_dir, 'database', 'db_schema.sql')
+            
             # Leer y ejecutar el script SQL
-            try:
-                with open('database/db_schema.sql', 'r', encoding='utf-8') as f:
-                    sql_script = f.read()
+            with open(sql_script_path, 'r', encoding='utf-8') as f:
+                sql_script = f.read()
                     
-                # Separar y ejecutar cada statement
-                statements = sql_script.split(';')
+            # Separar y ejecutar cada statement
+            statements = sql_script.split(';')
                 
-                with conn.cursor() as cursor:
-                    for statement in statements:
-                        statement = statement.strip()
-                        if statement and not statement.startswith('--'):
-                            try:
-                                cursor.execute(statement)
-                            except pymysql.Error as e:
-                                # Ignorar errores de objetos que ya existen
-                                if 'already exists' not in str(e):
-                                    Logger.warning(f"Advertencia al ejecutar statement: {e}", "DATABASE")
+            with conn.cursor() as cursor:
+                for statement in statements:
+                    statement = statement.strip()
+                    if statement and not statement.startswith('--'):
+                        try:
+                            cursor.execute(statement)
+                        except pymysql.Error as e:
+                            # Ignorar errores de objetos que ya existen
+                            if 'already exists' not in str(e):
+                                Logger.warning(f"Advertencia al ejecutar statement: {e}", "DATABASE")
                 
-                Logger.success("Base de datos inicializada correctamente", "DATABASE")
-                return True
+            Logger.success("Base de datos inicializada correctamente", "DATABASE")
+            return True
                 
-            except FileNotFoundError:
-                Logger.error("Archivo db_schema.sql no encontrado", "DATABASE")
-                return False
+        except FileNotFoundError:
+            error_msg = "Archivo db_schema.sql no encontrado"
+            Logger.error(error_msg, "DATABASE")
+            return False
                 
         except Exception as e:
             Logger.error_exception(e, "DATABASE")
             return False
+
+# Inicializar la conexión al cargar el módulo
+try:
+    Database.get_connection()
+except Exception as e:
+    Logger.error(f"Error al inicializar la base de datos: {e}", "DATABASE")

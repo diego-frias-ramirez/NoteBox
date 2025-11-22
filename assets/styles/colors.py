@@ -4,6 +4,8 @@ Paleta de colores del sistema
 """
 
 class Colors:
+    """Clase con constantes de colores para la interfaz del sistema."""
+    
     # Colores principales
     PRIMARY = "#2C3E50"        # Azul oscuro principal
     PRIMARY_DARK = "#1A252F"   # Azul más oscuro
@@ -39,7 +41,7 @@ class Colors:
     
     # Estados
     HOVER = "#ECF0F1"          # Hover general
-    ACTIVE = "#3498DB"         # Estado activo
+    ACTIVE = "#3498DB"         # Estado activa
     DISABLED = "#BDC3C7"       # Deshabilitado
     
     # Alertas de stock

@@ -1,12 +1,10 @@
 {
-  "app": {
+  "application": {
     "name": "NoteBox",
-    "version": "1.0.0",
+    "version": "v1.0.0",
     "author": "Equipo NoteBox - UTD",
-    "description": "Sistema de Gestión de Inventario para Papelerías"
-  },
-  "client": {
-    "name": "Papelería Valeria",
+    "description": "Sistema de Gestión de Inventario para Papelerías",
+    "company_name": "Papelería Valeria",
     "location": "Durango, México"
   },
   "window": {
@@ -15,20 +13,31 @@
     "height": 700,
     "min_width": 1000,
     "min_height": 600,
-    "resizable": true
+    "resizable": true,
+    "icon_path": "../assets/icons/app_icon.ico"
   },
-  "sidebar": {
-    "width": 250,
-    "collapsed_width": 60
+  "ui": {
+    "sidebar": {
+      "width": 250,
+      "collapsed_width": 60
+    },
+    "theme": {
+      "default": "light",
+      "available": ["light", "dark"]
+    },
+    "language": "es",
+    "date_format": "%d/%m/%Y",
+    "datetime_format": "%d/%m/%Y %H:%M:%S",
+    "decimal_places": 2
   },
   "alerts": {
     "stock_bajo_threshold": 10,
     "stock_medio_threshold": 50,
-    "dias_sin_movimiento": 30
+    "dias_sin_movimiento": 30,
+    "enable_stock_alerts": true,
+    "enable_inactive_product_alerts": true
   },
   "formats": {
-    "date_format": "%d/%m/%Y",
-    "datetime_format": "%d/%m/%Y %H:%M:%S",
     "currency": "MXN",
     "currency_symbol": "$"
   },
@@ -40,10 +49,22 @@
     "max_category_name_length": 50,
     "min_price": 0.01,
     "max_price": 999999.99,
-    "max_stock": 999999
+    "max_stock": 999999,
+    "max_user_name_length": 50,
+    "max_email_length": 100
   },
   "backup": {
     "auto_backup": true,
-    "backup_frequency_days": 7
+    "backup_frequency_days": 7,
+    "retention_days": 30,
+    "backup_time": "03:00:00"
+  },
+  "performance": {
+    "max_query_time_ms": 500,
+    "session_timeout_minutes": 30
+  },
+  "security": {
+    "max_login_attempts": 3,
+    "lockout_duration_minutes": 15
   }
 }

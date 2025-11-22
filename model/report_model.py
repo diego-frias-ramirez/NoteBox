@@ -51,7 +51,7 @@ class ReportModel:
     def get_low_stock_products():
         """Obtiene productos con stock bajo"""
         query = """
-            SELECT * FROM alertas_stock_bajo
+            SELECT * FROM vista_alertas_stock
         """
         
         try:

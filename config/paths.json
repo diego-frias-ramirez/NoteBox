@@ -1,39 +1,44 @@
 {
-  "base_dir": ".",
+  "base_dir": "..",
   "assets": {
-    "root": "assets",
-    "icons": "assets/icons",
-    "images": "assets/images",
-    "styles": "assets/styles"
+    "root": "../assets",
+    "icons": "../assets/icons",
+    "images": "../assets/images",
+    "styles": "../assets/styles"
   },
   "config": {
-    "root": "config"
-  },
-  "database": {
-    "root": "database",
-    "migrations": "database/migrations",
-    "seeds": "database/seeds"
+    "root": "../config",
+    "db_config": "../config/db_config.json",
+    "app_settings": "../config/app_settings.json",
+    "paths": "../config/paths.json"
   },
   "models": {
-    "root": "models"
+    "root": "../model"
   },
   "views": {
-    "root": "views",
-    "components": "views/components",
-    "pages": "views/pages"
+    "root": "../view",
+    "components": "../view/components",
+    "pages": "../view/pages"
   },
   "controllers": {
-    "root": "controllers"
+    "root": "../controller"
   },
   "utils": {
-    "root": "utils"
+    "root": "../utils"
   },
   "exports": {
-    "reports": "exports/reports",
-    "backups": "exports/backups",
-    "logs": "exports/logs"
+    "reports": "../exports/reports",
+    "backups": "../exports/backups",
+    "logs": "../logs"
   },
   "temp": {
-    "root": "temp"
-  }
+    "root": "../temp"
+  },
+  "logs": {
+    "dir": "../logs",
+    "app_log": "../logs/app.log",
+    "errors_log": "../logs/errors.log",
+    "access_log": "../logs/access.log"
+  },
+  "logs_dir": "../logs" 
 }

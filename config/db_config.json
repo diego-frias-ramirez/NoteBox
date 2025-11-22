@@ -1,32 +1,61 @@
 {
+  "development": {
     "database": {
-        "host": "localhost",
-        "user": "root",
-        "password": "",
-        "port": 3306,
-        "charset": "utf8mb4",
-        "autocommit": true,
-        "pool_size": 5,
-        "pool_name": "notebox_pool"
+      "host": "localhost",
+      "port": 3306,
+      "database": "notebox_db",
+      "user": "root",  
+      "password": "", 
+      "charset": "utf8mb4",
+      "use_ssl": false,
+      "connect_timeout": 10,
+      "autocommit": true,
+      "pool_size": 5,
+      "pool_name": "notebox_pool_dev"
     },
     "application": {
-        "name": "NoteBox - Sistema de Gestión de Inventario",
-        "version": "1.0.0",
-        "company_name": "Mi Empresa",
-        "backup_interval_days": 7,
-        "max_login_attempts": 3,
-        "session_timeout_minutes": 30
+      "name": "NoteBox - Sistema de Gestión de Inventario",
+      "version": "v1.0.0",
+      "company_name": "Papelería Valeria",
+      "backup_interval_days": 7,
+      "max_login_attempts": 3,
+      "session_timeout_minutes": 30
     },
     "paths": {
-        "backups": "exports/backups/",
-        "reports": "exports/reports/",
-        "logs": "exports/logs/",
-        "temp": "temp/"
-    },
-    "ui": {
-        "theme": "default",
-        "language": "es",
-        "date_format": "%d/%m/%Y",
-        "decimal_places": 2
+      "backups": "../exports/backups/",
+      "reports": "../exports/reports/",
+      "logs": "../logs/",
+      "temp": "../temp/"
     }
+  },
+  "production": {
+    "database": {
+      "host": "localhost",
+      "port": 3306,
+      "database": "notebox_db",
+      "user": "root",  
+      "password": "",  
+      "charset": "utf8mb4",
+      "use_ssl": false,
+      "connect_timeout": 30,
+      "autocommit": true,
+      "pool_size": 10,
+      "pool_name": "notebox_pool_prod"
+    },
+    "application": {
+      "name": "NoteBox - Sistema de Gestión de Inventario",
+      "version": "v1.0.0",
+      "company_name": "Papelería Valeria",
+      "backup_interval_days": 7,
+      "max_login_attempts": 3,
+      "session_timeout_minutes": 30
+    },
+    "paths": {
+      "backups": "../exports/backups/",
+      "reports": "../exports/reports/",
+      "logs": "../logs/",
+      "temp": "../temp/"
+    }
+  },
+  "current_environment": "development"
 }

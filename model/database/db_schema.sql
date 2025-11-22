@@ -2,7 +2,6 @@
 -- Universidad Tecnológica de Durango
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
 SET time_zone = "+00:00";
 
 -- Crear base de datos si no existe
@@ -35,7 +34,6 @@ CREATE TABLE IF NOT EXISTS productos (
     dias_sin_movimiento INT DEFAULT 0,
     fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
     FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE SET NULL,
     INDEX idx_codigo (codigo),
     INDEX idx_nombre (nombre),
@@ -57,7 +55,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
     estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo',
     ultimo_acceso DATETIME DEFAULT NULL,
     fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
     INDEX idx_usuario (usuario),
     INDEX idx_rol (rol),
     INDEX idx_estado (estado)
@@ -76,7 +73,6 @@ CREATE TABLE IF NOT EXISTS movimientos (
     usuario_id INT NOT NULL,
     notas TEXT DEFAULT NULL,
     fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
     FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT,
     INDEX idx_producto (producto_id),
@@ -96,7 +92,6 @@ CREATE TABLE IF NOT EXISTS alertas (
     fecha_alerta DATETIME DEFAULT CURRENT_TIMESTAMP,
     leida TINYINT(1) DEFAULT 0,
     usuario_id INT DEFAULT NULL,
-    
     FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
     INDEX idx_tipo (tipo),
@@ -133,7 +128,7 @@ CREATE TABLE IF NOT EXISTS configuracion (
 -- ============================================
 
 -- Categorías
-INSERT INTO categorias (nombre, descripcion) VALUES
+INSERT IGNORE INTO categorias (nombre, descripcion) VALUES
 ('Cuadernos', 'Cuadernos de diferentes tamaños y tipos'),
 ('Lapices y Lapiceros', 'Utiles de escritura'),
 ('Plumas y Marcadores', 'Plumas, marcadores y resaltadores'),
@@ -143,19 +138,17 @@ INSERT INTO categorias (nombre, descripcion) VALUES
 ('Pegamento y Adhesivos', 'Pegamentos, cintas y adhesivos'),
 ('Calculadoras', 'Calculadoras de diferentes tipos'),
 ('Mochilas y Estuches', 'Mochilas, estuches y loncheras'),
-('Otros', 'Otros productos de papelería')
-ON DUPLICATE KEY UPDATE nombre=nombre;
+('Otros', 'Otros productos de papelería');
 
 -- Usuarios
-INSERT INTO usuarios (usuario, contrasena, nombre, email, rol, estado) VALUES
+INSERT IGNORE INTO usuarios (usuario, contrasena, nombre, email, rol, estado) VALUES
 ('admin', 'admin123', 'Administrador', 'admin@notebox.com', 'Admin', 'Activo'),
 ('vendedor1', 'vendedor123', 'María González', 'maria@notebox.com', 'Empleado', 'Activo'),
 ('vendedor2', 'vendedor123', 'Carlos Rodríguez', 'carlos@notebox.com', 'Empleado', 'Activo'),
-('almacen', 'almacen123', 'Ana Martínez', 'ana@notebox.com', 'Empleado', 'Activo')
-ON DUPLICATE KEY UPDATE usuario=usuario;
+('almacen', 'almacen123', 'Ana Martínez', 'ana@notebox.com', 'Empleado', 'Activo');
 
 -- Productos de ejemplo
-INSERT INTO productos (codigo, nombre, descripcion, categoria_id, stock, stock_minimo, precio, estado, dias_sin_movimiento) VALUES
+INSERT IGNORE INTO productos (codigo, nombre, descripcion, categoria_id, stock, stock_minimo, precio, estado, dias_sin_movimiento) VALUES
 ('CUA-001', 'Cuaderno Profesional A4 100 hojas', NULL, 1, 150, 20, 45.50, 'Disponible', 2),
 ('CUA-002', 'Cuaderno Scribe Rayas 200 hojas', NULL, 1, 8, 15, 85.00, 'Stock Bajo', 5),
 ('CUA-003', 'Cuaderno Norma Cuadro Chico', NULL, 1, 0, 10, 38.00, 'Agotado', 15),
@@ -175,11 +168,10 @@ INSERT INTO productos (codigo, nombre, descripcion, categoria_id, stock, stock_m
 ('ART-002', 'Acuarelas Winsor 12 colores', NULL, 5, 5, 8, 150.00, 'Stock Bajo', 30),
 ('ART-003', 'Pinceles Set Profesional 6', NULL, 5, 12, 5, 75.00, 'Disponible', 18),
 ('PEG-001', 'Resistol 850 40g', NULL, 7, 25, 10, 12.00, 'Disponible', 3),
-('PEG-002', 'Pegamento en Barra Pritt 21g', NULL, 7, 8, 15, 8.50, 'Stock Bajo', 10)
-ON DUPLICATE KEY UPDATE codigo=codigo;
+('PEG-002', 'Pegamento en Barra Pritt 21g', NULL, 7, 8, 15, 8.50, 'Stock Bajo', 10);
 
 -- Configuración inicial
-INSERT INTO configuracion (
+INSERT IGNORE INTO configuracion (
     nombre_negocio, tipo_negocio, moneda, direccion, telefono, 
     email_contacto, color_primario, color_secundario, version
 ) VALUES (
@@ -192,143 +184,29 @@ INSERT INTO configuracion (
     '#2C3E50',
     '#3498DB',
     'v1.0.0'
-)
-ON DUPLICATE KEY UPDATE id=id;
+);
 
 -- ============================================
 -- VISTAS
 -- ============================================
 
--- Vista de productos con información completa
 CREATE OR REPLACE VIEW productos_completos AS
 SELECT 
-    p.id,
-    p.codigo,
-    p.nombre,
-    p.descripcion,
-    p.categoria_id,
-    c.nombre AS categoria_nombre,
-    p.stock,
-    p.stock_minimo,
-    p.precio,
-    p.estado,
-    p.dias_sin_movimiento,
-    p.fecha_creacion,
-    p.fecha_actualizacion,
+    p.id, p.codigo, p.nombre, p.descripcion, p.categoria_id,
+    c.nombre AS categoria_nombre, p.stock, p.stock_minimo,
+    p.precio, p.estado, p.dias_sin_movimiento,
+    p.fecha_creacion, p.fecha_actualizacion,
     (p.stock * p.precio) AS valor_inventario
 FROM productos p
 LEFT JOIN categorias c ON p.categoria_id = c.id;
 
--- Vista de alertas de stock
 CREATE OR REPLACE VIEW vista_alertas_stock AS
 SELECT 
-    p.id,
-    p.codigo,
-    p.nombre,
-    c.nombre AS categoria,
-    p.stock,
-    p.stock_minimo,
-    p.estado,
+    p.id, p.codigo, p.nombre, c.nombre AS categoria,
+    p.stock, p.stock_minimo, p.estado,
     (p.stock_minimo - p.stock) AS unidades_faltantes,
     p.dias_sin_movimiento
 FROM productos p
 LEFT JOIN categorias c ON p.categoria_id = c.id
 WHERE p.estado IN ('Stock Bajo', 'Agotado') OR p.dias_sin_movimiento > 30
 ORDER BY p.estado DESC, p.stock ASC;
-
--- ============================================
--- PROCEDIMIENTOS ALMACENADOS
--- ============================================
-
-DELIMITER $$
-
--- Obtener resumen de inventario
-CREATE PROCEDURE IF NOT EXISTS sp_resumen_inventario()
-BEGIN
-    SELECT 
-        COUNT(*) AS total_productos,
-        SUM(CASE WHEN estado = 'Disponible' THEN 1 ELSE 0 END) AS productos_disponibles,
-        SUM(CASE WHEN estado = 'Stock Bajo' THEN 1 ELSE 0 END) AS productos_stock_bajo,
-        SUM(CASE WHEN estado = 'Agotado' THEN 1 ELSE 0 END) AS productos_agotados,
-        SUM(stock) AS unidades_totales,
-        SUM(stock * precio) AS valor_total_inventario,
-        COUNT(CASE WHEN dias_sin_movimiento > 30 THEN 1 END) AS productos_sin_movimiento
-    FROM productos;
-END$$
-
--- Registrar movimiento y actualizar stock
-CREATE PROCEDURE IF NOT EXISTS sp_registrar_movimiento(
-    IN p_tipo VARCHAR(10),
-    IN p_producto_id INT,
-    IN p_cantidad INT,
-    IN p_motivo VARCHAR(255),
-    IN p_usuario_id INT,
-    IN p_notas TEXT
-)
-BEGIN
-    DECLARE v_stock_actual INT;
-    DECLARE v_nuevo_stock INT;
-    
-    -- Obtener stock actual
-    SELECT stock INTO v_stock_actual FROM productos WHERE id = p_producto_id;
-    
-    -- Calcular nuevo stock
-    IF p_tipo = 'Entrada' THEN
-        SET v_nuevo_stock = v_stock_actual + p_cantidad;
-    ELSE
-        SET v_nuevo_stock = v_stock_actual - p_cantidad;
-    END IF;
-    
-    -- Validar que no sea negativo
-    IF v_nuevo_stock < 0 THEN
-        SIGNAL SQLSTATE '45000' 
-        SET MESSAGE_TEXT = 'Stock insuficiente para realizar la salida';
-    END IF;
-    
-    -- Registrar movimiento
-    INSERT INTO movimientos (tipo, producto_id, cantidad, motivo, fecha, usuario_id, notas)
-    VALUES (p_tipo, p_producto_id, p_cantidad, p_motivo, NOW(), p_usuario_id, p_notas);
-    
-    -- Actualizar stock del producto
-    UPDATE productos 
-    SET stock = v_nuevo_stock,
-        dias_sin_movimiento = 0,
-        estado = CASE
-            WHEN v_nuevo_stock = 0 THEN 'Agotado'
-            WHEN v_nuevo_stock <= stock_minimo THEN 'Stock Bajo'
-            ELSE 'Disponible'
-        END
-    WHERE id = p_producto_id;
-    
-END$$
-
-DELIMITER ;
-
--- ============================================
--- TRIGGERS
--- ============================================
-
-DELIMITER $$
-
--- Trigger para actualizar estado del producto al cambiar stock
-CREATE TRIGGER IF NOT EXISTS trg_actualizar_estado_producto
-BEFORE UPDATE ON productos
-FOR EACH ROW
-BEGIN
-    IF NEW.stock != OLD.stock THEN
-        IF NEW.stock = 0 THEN
-            SET NEW.estado = 'Agotado';
-        ELSEIF NEW.stock <= NEW.stock_minimo THEN
-            SET NEW.estado = 'Stock Bajo';
-        ELSE
-            SET NEW.estado = 'Disponible';
-        END IF;
-    END IF;
-END$$
-
-DELIMITER ;
-
-COMMIT;
-
--- Confirmar creación
-SELECT 'Base de datos NoteBox creada exitosamente' AS mensaje;

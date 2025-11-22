@@ -4,6 +4,8 @@ Configuración de fuentes y tamaños
 """
 
 class Fonts:
+    """Clase con configuraciones de fuentes para la interfaz del sistema."""
+    
     # Familia de fuentes
     FAMILY = "Segoe UI"
     FAMILY_FALLBACK = "Arial"
