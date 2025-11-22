@@ -175,8 +175,8 @@ class NoteBoxLogin(ctk.CTk):
             
             # Cerrar ventana de login y abrir dashboard
             self.destroy()
-            from view.dashboard_view import NoteBoxDashboard
-            NoteBoxDashboard(user_data).run()
+            from view.dashboard_view import DashboardView
+            DashboardView(user_data).run()
         else:
             self.show_message("Usuario o contraseña incorrectos", "error")
     
