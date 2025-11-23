@@ -1,5 +1,5 @@
 """
-NoteBox - Vista del Módulo de Inventario
+NoteBox - Vista del Módulo de Inventario (Versión Final - UI Premium)
 Ubicación: view/inventory_view.py
 """
 
@@ -68,7 +68,16 @@ class InventarioView(BaseView):
         search_frame.pack(side="left")
         search_frame.pack_propagate(False)
 
-        ctk.CTkLabel(search_frame, text="🔍", font=ctk.CTkFont(size=16), text_color="#94A3B8").pack(side="left", padx=(18, 10))
+        # Icono de búsqueda
+        search_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "search.png")
+        try:
+            img = Image.open(search_icon_path)
+            img = img.resize((16, 16), Image.LANCZOS)
+            search_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(16, 16))
+            ctk.CTkLabel(search_frame, image=search_icon, text="").pack(side="left", padx=(18, 10))
+        except:
+            ctk.CTkLabel(search_frame, text="🔍", font=ctk.CTkFont(size=16), text_color="#94A3B8").pack(side="left", padx=(18, 10))
+
         self.search_entry = ctk.CTkEntry(
             search_frame, placeholder_text="Buscar productos...",
             fg_color="transparent", border_width=0, font=ctk.CTkFont(size=14), height=44
@@ -82,7 +91,7 @@ class InventarioView(BaseView):
 
         # Filtrar
         filter_btn = ctk.CTkButton(
-            btns_frame, text="🔽  Filtrar", width=110, height=44,
+            btns_frame, text="Filtrar", width=110, height=44,
             font=ctk.CTkFont(size=13), fg_color="#FFFFFF",
             text_color="#1E293B", hover_color="#F1F5F9",
             corner_radius=10, border_width=1, border_color="#E2E8F0",
@@ -91,21 +100,47 @@ class InventarioView(BaseView):
         filter_btn.pack(side="left", padx=(0, 12))
 
         # Exportar
-        export_btn = ctk.CTkButton(
-            btns_frame, text="⬇  Exportar", width=120, height=44,
-            font=ctk.CTkFont(size=13), fg_color="#10B981",
-            text_color="#FFFFFF", hover_color="#059669", corner_radius=10,
-            command=self.export_inventory
-        )
+        export_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "dowload.png")
+        try:
+            img = Image.open(export_icon_path)
+            img = img.resize((16, 16), Image.LANCZOS)
+            export_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(16, 16))
+            export_btn = ctk.CTkButton(
+                btns_frame, text="Exportar", width=120, height=44,
+                font=ctk.CTkFont(size=13), fg_color="#10B981",
+                text_color="#FFFFFF", hover_color="#059669", corner_radius=10,
+                image=export_icon, compound="left",
+                command=self.export_inventory
+            )
+        except:
+            export_btn = ctk.CTkButton(
+                btns_frame, text="⬇  Exportar", width=120, height=44,
+                font=ctk.CTkFont(size=13), fg_color="#10B981",
+                text_color="#FFFFFF", hover_color="#059669", corner_radius=10,
+                command=self.export_inventory
+            )
         export_btn.pack(side="left", padx=(0, 12))
 
         # Añadir Producto
-        add_btn = ctk.CTkButton(
-            btns_frame, text="+  Añadir Producto", width=160, height=44,
-            font=ctk.CTkFont(size=13, weight="bold"), fg_color="#00B4D8",
-            text_color="#FFFFFF", hover_color="#0096B4", corner_radius=10,
-            command=self.add_product
-        )
+        add_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "mas.png")
+        try:
+            img = Image.open(add_icon_path)
+            img = img.resize((16, 16), Image.LANCZOS)
+            add_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(16, 16))
+            add_btn = ctk.CTkButton(
+                btns_frame, text="Añadir Producto", width=160, height=44,
+                font=ctk.CTkFont(size=13, weight="bold"), fg_color="#00B4D8",
+                text_color="#FFFFFF", hover_color="#0096B4", corner_radius=10,
+                image=add_icon, compound="left",
+                command=self.add_product
+            )
+        except:
+            add_btn = ctk.CTkButton(
+                btns_frame, text="+  Añadir Producto", width=160, height=44,
+                font=ctk.CTkFont(size=13, weight="bold"), fg_color="#00B4D8",
+                text_color="#FFFFFF", hover_color="#0096B4", corner_radius=10,
+                command=self.add_product
+            )
         add_btn.pack(side="left")
 
     def on_search_change(self, event):
@@ -131,7 +166,20 @@ class InventarioView(BaseView):
         dialog.geometry(f"300x350+{x}+{y}")
 
         # Título
-        ctk.CTkLabel(dialog, text="Seleccionar Categoría", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=15)
+        title_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        title_frame.pack(fill="x", pady=(15, 5))
+
+        # Icono de filtro
+        filter_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "filtro.png")
+        try:
+            img = Image.open(filter_icon_path)
+            img = img.resize((20, 20), Image.LANCZOS)
+            filter_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
+            ctk.CTkLabel(title_frame, image=filter_icon, text="").pack(side="left", padx=(0, 10))
+        except:
+            ctk.CTkLabel(title_frame, text="⚙️", font=ctk.CTkFont(size=16)).pack(side="left", padx=(0, 10))
+
+        ctk.CTkLabel(title_frame, text="Seleccionar Categoría", font=ctk.CTkFont(size=16, weight="bold")).pack(side="left")
 
         # Scrollable Frame para categorías
         categories_scrollable = ctk.CTkScrollableFrame(dialog, fg_color="transparent")
@@ -220,11 +268,12 @@ class InventarioView(BaseView):
             )
             remove_tag_btn.pack(side="left", padx=(0, 8))
         else:
-            # Mostrar mensaje si no hay filtros activos
-            ctk.CTkLabel(
-                filters_frame, text="Ningún filtro aplicado",
-                font=ctk.CTkFont(size=12), text_color="#94A3B8"
-            ).pack(side="left", padx=(0, 10))
+            # Solo mostrar "Ningún filtro aplicado" si también la búsqueda está vacía
+            if not self.search_query.strip():  # <-- NUEVO: Verificar que la búsqueda esté vacía
+                ctk.CTkLabel(
+                    filters_frame, text="Ningún filtro aplicado",
+                    font=ctk.CTkFont(size=12), text_color="#94A3B8"
+                ).pack(side="left", padx=(0, 10))
 
         # Botón para agregar más filtros (opcional)
         ctk.CTkButton(
@@ -258,7 +307,7 @@ class InventarioView(BaseView):
             ("Stock", 70),
             ("Precio", 80),
             ("Estado", 100),
-            ("Acciones", 90)
+            ("Acciones", 120) # <-- Aumentado de 90 a 120 para dar más espacio a los botones
         ]
 
         for name, width in columns:
@@ -317,6 +366,7 @@ class InventarioView(BaseView):
         product_frame.pack(side="left", padx=8)
         product_frame.pack_propagate(False)
 
+        # Icono genérico
         icon_frame = ctk.CTkFrame(product_frame, fg_color="#E0F7FA", width=32, height=32, corner_radius=8)
         icon_frame.pack(side="left", padx=(0, 10))
         icon_frame.pack_propagate(False)
@@ -366,28 +416,75 @@ class InventarioView(BaseView):
             font=ctk.CTkFont(size=10, weight="bold"), text_color=text_color
         ).pack(padx=12, pady=4)
 
-        # Acciones (Editar, Eliminar)
-        actions_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=90)
+        # Acciones (Editar, Eliminar) - Espaciado aumentado
+        actions_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=120) # <-- Ancho aumentado a 120
         actions_frame.pack(side="left", padx=8)
         actions_frame.pack_propagate(False)
 
         # Botón Editar
-        edit_btn = ctk.CTkButton(
-            actions_frame, text="✏️", width=32, height=32,
-            fg_color="transparent", hover_color="#E0F7FA",
-            corner_radius=6, font=ctk.CTkFont(size=14),
-            command=lambda p=product: self.edit_product(p)
-        )
+        edit_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "edit.png")
+        try:
+            img = Image.open(edit_icon_path)
+            img = img.resize((20, 20), Image.LANCZOS)
+            edit_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
+            edit_btn = ctk.CTkButton(
+                actions_frame, image=edit_icon, text="", width=32, height=32,
+                fg_color="transparent", hover_color="#E0F7FA",
+                corner_radius=6,
+                command=lambda p=product: self.edit_product(p)
+            )
+        except:
+            # Fallback a emoji si no se puede cargar el ícono
+            edit_btn = ctk.CTkButton(
+                actions_frame, text="✏️", width=32, height=32,
+                fg_color="transparent", hover_color="#E0F7FA",
+                corner_radius=6, font=ctk.CTkFont(size=14),
+                command=lambda p=product: self.edit_product(p)
+            )
         edit_btn.pack(side="left", padx=2)
 
         # Botón Eliminar
-        delete_btn = ctk.CTkButton(
-            actions_frame, text="🗑️", width=32, height=32,
-            fg_color="transparent", hover_color="#FEE2E2",
-            corner_radius=6, font=ctk.CTkFont(size=14),
-            command=lambda p=product: self.delete_product(p)
-        )
+        delete_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "delete.png")
+        try:
+            img = Image.open(delete_icon_path)
+            img = img.resize((20, 20), Image.LANCZOS)
+            delete_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
+            delete_btn = ctk.CTkButton(
+                actions_frame, image=delete_icon, text="", width=32, height=32,
+                fg_color="transparent", hover_color="#FEE2E2",
+                corner_radius=6,
+                command=lambda p=product: self.delete_product(p)
+            )
+        except:
+            # Fallback a emoji si no se puede cargar el ícono
+            delete_btn = ctk.CTkButton(
+                actions_frame, text="🗑️", width=32, height=32,
+                fg_color="transparent", hover_color="#FEE2E2",
+                corner_radius=6, font=ctk.CTkFont(size=14),
+                command=lambda p=product: self.delete_product(p)
+            )
         delete_btn.pack(side="left", padx=2)
+
+        # Botón Ver Detalles (opcional, para futuras funcionalidades)
+        details_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "products_2.png")
+        try:
+            img = Image.open(details_icon_path)
+            img = img.resize((20, 20), Image.LANCZOS)
+            details_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
+            details_btn = ctk.CTkButton(
+                actions_frame, image=details_icon, text="", width=32, height=32,
+                fg_color="transparent", hover_color="#E0F7FA",
+                corner_radius=6,
+                command=lambda p=product: self.view_product_details(p)
+            )
+        except:
+            details_btn = ctk.CTkButton(
+                actions_frame, text="👁️", width=32, height=32,
+                fg_color="transparent", hover_color="#E0F7FA",
+                corner_radius=6, font=ctk.CTkFont(size=14),
+                command=lambda p=product: self.view_product_details(p)
+            )
+        details_btn.pack(side="left", padx=2)
 
     def create_pagination(self, parent):
         """Crea la barra de paginación."""
@@ -544,16 +641,12 @@ class InventarioView(BaseView):
             # self.show_message("Error al cargar productos", "error")
 
     def add_product(self):
-        """Acción para añadir un producto (abre un diálogo o cambia a otra vista)."""
-        # Opcional: Abrir un diálogo para añadir producto
-        from tkinter import messagebox
-        messagebox.showinfo("Añadir Producto", "Funcionalidad en desarrollo.")
+        """Acción para añadir un producto (abre un diálogo)."""
+        self.open_add_product_dialog()
 
     def edit_product(self, product):
-        """Acción para editar un producto."""
-        # Opcional: Abrir un diálogo para editar producto
-        from tkinter import messagebox
-        messagebox.showinfo("Editar Producto", f"Editando producto: {product['nombre']}")
+        """Acción para editar un producto (abre un diálogo)."""
+        self.open_edit_product_dialog(product)
 
     def delete_product(self, product):
         """Acción para eliminar un producto."""
@@ -574,6 +667,11 @@ class InventarioView(BaseView):
                 Logger.error(f"Error al eliminar producto {product['id']}: {message}", "INVENTORY_VIEW")
                 self.show_message(f"Error al eliminar: {message}", "error")
 
+    def view_product_details(self, product):
+        """Acción para ver detalles de un producto (opcional)."""
+        from tkinter import messagebox
+        messagebox.showinfo("Detalles del Producto", f"ID: {product['id']}\nNombre: {product['nombre']}\nCategoría: {self.categories.get(product.get('categoria_id'), {}).get('nombre', 'Sin Categoría')}\nStock: {product['stock']}\nPrecio: {product['precio']}\nEstado: {product['estado']}")
+
     def export_inventory(self):
         """Exporta el inventario."""
         success, message = self.controller.export_inventory(format="csv", category_id=self.filter_category_id, search_query=self.search_query)
@@ -586,7 +684,6 @@ class InventarioView(BaseView):
 
     def show_message(self, message, msg_type="info"):
         """Muestra un mensaje temporal al usuario."""
-        # Este es un ejemplo simple, puedes implementar un popup más elegante
         colors = {"info": "#3B82F6", "success": "#10B981", "warning": "#F59E0B", "error": "#EF4444"}
         color = colors.get(msg_type, "#3B82F6")
 
@@ -604,12 +701,354 @@ class InventarioView(BaseView):
         y = self.winfo_y() + (self.winfo_height() // 2) - (100 // 2)
         popup.geometry(f"300x100+{x}+{y}")
 
+        # Frame para contenido
+        content_frame = ctk.CTkFrame(popup, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # Icono según tipo de mensaje
+        icon_path = ""
+        if msg_type == "success":
+            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert_info.png")
+        elif msg_type == "error":
+            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert.png")
+        elif msg_type == "warning":
+            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert_yellow.png")
+        else:  # info
+            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "notifications.png")
+
+        try:
+            img = Image.open(icon_path)
+            img = img.resize((20, 20), Image.LANCZOS)
+            icon_img = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
+            icon_label = ctk.CTkLabel(content_frame, image=icon_img, text="")
+            icon_label.pack(side="left", padx=(0, 10))
+        except:
+            # Fallback a emoji si no se puede cargar el ícono
+            fallback_emoji = {"info": "ℹ️", "success": "✅", "warning": "⚠️", "error": "❌"}
+            ctk.CTkLabel(content_frame, text=fallback_emoji.get(msg_type, "ℹ️"), font=ctk.CTkFont(size=16)).pack(side="left", padx=(0, 10))
+
+        # Texto del mensaje
         label = ctk.CTkLabel(
-            popup, text=message,
+            content_frame, text=message,
             font=ctk.CTkFont(size=13, weight="bold"),
             text_color=color
         )
-        label.pack(expand=True)
+        label.pack(side="left", expand=True)
 
         popup.after(3000, popup.destroy)
+
+    def open_add_product_dialog(self):
+        """Abre un diálogo para añadir un nuevo producto."""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Añadir Nuevo Producto")
+        dialog.geometry("500x600")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        # Centrar el diálogo
+        x = self.winfo_x() + (self.winfo_width() // 2) - (500 // 2)
+        y = self.winfo_y() + (self.winfo_height() // 2) - (600 // 2)
+        dialog.geometry(f"500x600+{x}+{y}")
+
+        # Frame principal del diálogo
+        main_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Título con ícono
+        title_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        title_frame.pack(fill="x", pady=(0, 10))
+
+        # Cargar ícono de productos
+        icon_path = os.path.join(self.base_path, "..", "assets", "icons", "products.png")
+        try:
+            img = Image.open(icon_path)
+            img = img.resize((32, 32), Image.LANCZOS)
+            self.images["add_product_icon"] = ctk.CTkImage(light_image=img, dark_image=img, size=(32, 32))
+            ctk.CTkLabel(title_frame, image=self.images["add_product_icon"], text="").pack(side="left", padx=(0, 10))
+        except:
+            ctk.CTkLabel(title_frame, text="📦", font=ctk.CTkFont(size=20)).pack(side="left", padx=(0, 10))
+
+        ctk.CTkLabel(title_frame, text="Añadir Nuevo Producto", font=ctk.CTkFont(size=18, weight="bold")).pack(side="left")
+
+        # Scrollable Frame para el formulario
+        form_frame = ctk.CTkScrollableFrame(main_frame, fg_color="transparent")
+        form_frame.pack(fill="both", expand=True, pady=(10, 0))
+
+        # Campos del formulario
+        fields = [
+            ("Nombre del Producto:", "name_entry", "Ingrese el nombre"),
+            ("Código del Producto:", "code_entry", "Ingrese el código"),
+            ("Descripción:", "description_entry", ""),
+            ("Categoría:", "category_combo", ""),
+            ("Stock Actual:", "stock_entry", "Ingrese el stock"),
+            ("Stock Mínimo:", "min_stock_entry", "Ingrese el stock mínimo"),
+            ("Precio Unitario:", "price_entry", "Ingrese el precio")
+        ]
+
+        for label_text, var_name, placeholder in fields:
+            field_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+            field_frame.pack(fill="x", pady=(10, 0))
+
+            ctk.CTkLabel(field_frame, text=label_text, font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(5, 0))
+
+            if var_name == "description_entry":
+                widget = ctk.CTkTextbox(field_frame, height=60)
+                widget.pack(fill="x", pady=(5, 10))
+            elif var_name == "category_combo":
+                widget = ctk.CTkComboBox(field_frame, values=["Seleccione una categoría"])
+                widget.pack(fill="x", pady=(5, 10))
+            else:
+                widget = ctk.CTkEntry(field_frame, placeholder_text=placeholder)
+                widget.pack(fill="x", pady=(5, 10))
+
+            setattr(self, var_name, widget)  # Guardar referencia
+
+        # Cargar categorías en el combo box
+        categories_list = list(self.categories.values())
+        category_names = [cat['nombre'] for cat in categories_list]
+        self.category_combo.configure(values=category_names)
+
+        # Botones de acción
+        buttons_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        buttons_frame.pack(fill="x", pady=(20, 0))
+
+        def save_product():
+            # Validar campos
+            name = self.name_entry.get().strip()
+            code = self.code_entry.get().strip()
+            description = self.description_entry.get("1.0", "end-1c").strip()
+            category_name = self.category_combo.get().strip()
+            stock_str = self.stock_entry.get().strip()
+            min_stock_str = self.min_stock_entry.get().strip()
+            price_str = self.price_entry.get().strip()
+
+            # Validación básica
+            if not name or not code or not category_name or not stock_str or not min_stock_str or not price_str:
+                self.show_message("Por favor, complete todos los campos.", "error")
+                return
+
+            try:
+                stock = int(stock_str)
+                min_stock = int(min_stock_str)
+                price = float(price_str)
+            except ValueError:
+                self.show_message("Stock, stock mínimo y precio deben ser números válidos.", "error")
+                return
+
+            # Obtener el ID de la categoría
+            category_id = None
+            for cat in categories_list:
+                if cat['nombre'] == category_name:
+                    category_id = cat['id']
+                    break
+
+            if category_id is None:
+                self.show_message("Categoría no válida.", "error")
+                return
+
+            # Preparar datos para enviar al controlador
+            product_data = {
+                "codigo": code,
+                "nombre": name,
+                "descripcion": description,
+                "categoria_id": category_id,
+                "stock": stock,
+                "stock_minimo": min_stock,
+                "precio": price,
+                "estado": "Disponible",
+                "activo": True
+            }
+
+            # Usar el controlador para crear el producto
+            success, result = self.controller.create_product(product_data)
+            if success:
+                Logger.success(f"Producto '{name}' creado con ID {result['id']}", "INVENTORY_VIEW")
+                # Cerrar el diálogo
+                dialog.destroy()
+                # Recargar la lista de productos
+                self.load_products()
+                # Mostrar mensaje de éxito
+                self.show_message(f"Producto '{name}' creado correctamente.", "success")
+            else:
+                Logger.error(f"Error al crear producto '{name}': {result}", "INVENTORY_VIEW")
+                self.show_message(f"Error al crear: {result}", "error")
+
+        # Botón Guardar
+        save_btn = ctk.CTkButton(
+            buttons_frame, text="Guardar Producto", width=150, height=30,
+            fg_color="#00B4D8", text_color="#FFFFFF", hover_color="#0096B4",
+            command=save_product
+        )
+        save_btn.pack(side="left", padx=10)
+
+        # Botón Cancelar
+        cancel_btn = ctk.CTkButton(
+            buttons_frame, text="Cancelar", width=150, height=30,
+            fg_color="#E5E7EB", text_color="#1E293B", hover_color="#D1D5DB",
+            command=dialog.destroy
+        )
+        cancel_btn.pack(side="right", padx=10)
+
+    def open_edit_product_dialog(self, product):
+        """Abre un diálogo para editar un producto existente."""
+        dialog = ctk.CTkToplevel(self)
+        dialog.title(f"Editar Producto: {product['nombre']}")
+        dialog.geometry("500x600")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        # Centrar el diálogo
+        x = self.winfo_x() + (self.winfo_width() // 2) - (500 // 2)
+        y = self.winfo_y() + (self.winfo_height() // 2) - (600 // 2)
+        dialog.geometry(f"500x600+{x}+{y}")
+
+        # Frame principal del diálogo
+        main_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Título con ícono
+        title_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        title_frame.pack(fill="x", pady=(0, 10))
+
+        # Cargar ícono de productos
+        icon_path = os.path.join(self.base_path, "..", "assets", "icons", "products.png")
+        try:
+            img = Image.open(icon_path)
+            img = img.resize((32, 32), Image.LANCZOS)
+            self.images["edit_product_icon"] = ctk.CTkImage(light_image=img, dark_image=img, size=(32, 32))
+            ctk.CTkLabel(title_frame, image=self.images["edit_product_icon"], text="").pack(side="left", padx=(0, 10))
+        except:
+            ctk.CTkLabel(title_frame, text="📦", font=ctk.CTkFont(size=20)).pack(side="left", padx=(0, 10))
+
+        ctk.CTkLabel(title_frame, text=f"Editar Producto: {product['nombre']}", font=ctk.CTkFont(size=18, weight="bold")).pack(side="left")
+
+        # Scrollable Frame para el formulario
+        form_frame = ctk.CTkScrollableFrame(main_frame, fg_color="transparent")
+        form_frame.pack(fill="both", expand=True, pady=(10, 0))
+
+        # Campos del formulario
+        fields = [
+            ("Nombre del Producto:", "name_entry", "Ingrese el nombre"),
+            ("Código del Producto:", "code_entry", "Ingrese el código"),
+            ("Descripción:", "description_entry", ""),
+            ("Categoría:", "category_combo", ""),
+            ("Stock Actual:", "stock_entry", "Ingrese el stock"),
+            ("Stock Mínimo:", "min_stock_entry", "Ingrese el stock mínimo"),
+            ("Precio Unitario:", "price_entry", "Ingrese el precio")
+        ]
+
+        for label_text, var_name, placeholder in fields:
+            field_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+            field_frame.pack(fill="x", pady=(10, 0))
+
+            ctk.CTkLabel(field_frame, text=label_text, font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(5, 0))
+
+            if var_name == "description_entry":
+                widget = ctk.CTkTextbox(field_frame, height=60)
+                widget.pack(fill="x", pady=(5, 10))
+            elif var_name == "category_combo":
+                widget = ctk.CTkComboBox(field_frame, values=["Seleccione una categoría"])
+                widget.pack(fill="x", pady=(5, 10))
+            else:
+                widget = ctk.CTkEntry(field_frame, placeholder_text=placeholder)
+                widget.pack(fill="x", pady=(5, 10))
+
+            setattr(self, var_name, widget)  # Guardar referencia
+
+        # Cargar categorías en el combo box
+        categories_list = list(self.categories.values())
+        category_names = [cat['nombre'] for cat in categories_list]
+        self.category_combo.configure(values=category_names)
+
+        # Seleccionar la categoría actual
+        current_category_name = self.categories.get(product.get('categoria_id'), {}).get('nombre', 'Sin Categoría')
+        self.category_combo.set(current_category_name)
+
+        # Rellenar campos con los datos actuales del producto
+        self.name_entry.insert(0, product['nombre'])
+        self.code_entry.insert(0, product['codigo'])
+        self.description_entry.insert("1.0", product['descripcion'] if product.get('descripcion') else "")
+        self.stock_entry.insert(0, str(product['stock']))
+        self.min_stock_entry.insert(0, str(product['stock_minimo']))
+        self.price_entry.insert(0, str(product['precio']))
+
+        # Botones de acción
+        buttons_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        buttons_frame.pack(fill="x", pady=(20, 0))
+
+        def save_edited_product():
+            # Validar campos
+            name = self.name_entry.get().strip()
+            code = self.code_entry.get().strip()
+            description = self.description_entry.get("1.0", "end-1c").strip()
+            category_name = self.category_combo.get().strip()
+            stock_str = self.stock_entry.get().strip()
+            min_stock_str = self.min_stock_entry.get().strip()
+            price_str = self.price_entry.get().strip()
+
+            if not name or not code or not category_name or not stock_str or not min_stock_str or not price_str:
+                self.show_message("Por favor, complete todos los campos.", "error")
+                return
+
+            try:
+                stock = int(stock_str)
+                min_stock = int(min_stock_str)
+                price = float(price_str)
+            except ValueError:
+                self.show_message("Stock, stock mínimo y precio deben ser números válidos.", "error")
+                return
+
+            # Obtener el ID de la categoría
+            category_id = None
+            for cat in categories_list:
+                if cat['nombre'] == category_name:
+                    category_id = cat['id']
+                    break
+
+            if category_id is None:
+                self.show_message("Categoría no válida.", "error")
+                return
+
+            # Preparar datos para enviar al controlador
+            product_data = {
+                "nombre": name,
+                "codigo": code,
+                "descripcion": description,
+                "categoria_id": category_id,
+                "stock": stock,
+                "stock_minimo": min_stock,
+                "precio": price,
+                "estado": product['estado'], # Mantener el estado actual
+                "activo": product['activo'] # Mantener el estado activo
+            }
+
+            # Usar el controlador para actualizar el producto
+            success, result = self.controller.update_product(product['id'], product_data)
+            if success:
+                Logger.success(f"Producto ID {product['id']} actualizado", "INVENTORY_VIEW")
+                # Cerrar el diálogo
+                dialog.destroy()
+                # Recargar la lista de productos
+                self.load_products()
+                # Mostrar mensaje de éxito
+                self.show_message(f"Producto '{name}' actualizado correctamente.", "success")
+            else:
+                Logger.error(f"Error al actualizar producto ID {product['id']}: {result}", "INVENTORY_VIEW")
+                self.show_message(f"Error al actualizar: {result}", "error")
+
+        # Botón Guardar Cambios
+        save_btn = ctk.CTkButton(
+            buttons_frame, text="Guardar Cambios", width=150, height=30,
+            fg_color="#00B4D8", text_color="#FFFFFF", hover_color="#0096B4",
+            command=save_edited_product
+        )
+        save_btn.pack(side="left", padx=10)
+
+        # Botón Cancelar
+        cancel_btn = ctk.CTkButton(
+            buttons_frame, text="Cancelar", width=150, height=30,
+            fg_color="#E5E7EB", text_color="#1E293B", hover_color="#D1D5DB",
+            command=dialog.destroy
+        )
+        cancel_btn.pack(side="right", padx=10)
 

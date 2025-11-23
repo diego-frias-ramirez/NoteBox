@@ -42,12 +42,12 @@ class InventoryController:
             Logger.info("Resumen de inventario obtenido correctamente", "INVENTORY_CONTROLLER")
             return summary
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return {}
 
     def get_products(self, page=None, search="", category_id=None):
         """
-        Obtiene productos con paginación, búsqueda y filtros.
+        Obtiene productos con paginación y filtros.
         
         Args:
             page (int): Número de página (opcional, usa self.current_page si no se pasa).
@@ -92,18 +92,18 @@ class InventoryController:
                 Logger.warning(f"Producto ID {product_id} no encontrado", "INVENTORY_CONTROLLER")
             return product
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return None
 
     def get_categories(self):
         """Obtiene todas las categorías activas."""
         try:
-            categories = self.category_model.get_all_categories() # Asegúrate que este método exista
+            categories = self.category_model.get_all_categories()
             Logger.info(f"Categorías obtenidas: {len(categories)}", "INVENTORY_CONTROLLER")
             # Convertir lista a diccionario para acceso rápido por ID si es necesario
             return {cat['id']: cat for cat in categories}
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return {}
 
     def create_product(self, data):
@@ -117,7 +117,7 @@ class InventoryController:
             tuple: (bool: éxito, str: mensaje o dict: producto creado).
         """
         # Validar datos de entrada
-        is_valid, msg = Validators.validate_product_data(data) # Asegúrate que este método exista
+        is_valid, msg = Validators.validate_product_data(data)
         if not is_valid:
             Logger.warning(f"Validación fallida en creación: {msg}", "INVENTORY_CONTROLLER")
             return False, msg
@@ -137,7 +137,7 @@ class InventoryController:
                 Logger.error(error_msg, "INVENTORY_CONTROLLER")
                 return False, error_msg
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return False, str(e)
 
     def update_product(self, product_id, data):
@@ -173,7 +173,7 @@ class InventoryController:
                 Logger.error(error_msg, "INVENTORY_CONTROLLER")
                 return False, error_msg
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return False, str(e)
 
     def delete_product(self, product_id):
@@ -187,7 +187,7 @@ class InventoryController:
             tuple: (bool: éxito, str: mensaje).
         """
         try:
-            success = self.product_model.deactivate_product(product_id) # Asegúrate que este método exista
+            success = self.product_model.deactivate_product(product_id) # Asumiendo que tienes este método
             if success:
                 Logger.success(f"Producto ID {product_id} eliminado (desactivado)", "INVENTORY_CONTROLLER")
                 # Registrar acción
@@ -199,7 +199,7 @@ class InventoryController:
                 Logger.error(error_msg, "INVENTORY_CONTROLLER")
                 return False, error_msg
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return False, str(e)
 
     def register_movement(self, product_id, quantity, movement_type, reason, user_id):
@@ -255,7 +255,7 @@ class InventoryController:
                 return False, "No se pudo registrar el movimiento"
                 
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return False, str(e)
 
     def get_low_stock_products(self, threshold=None):
@@ -271,7 +271,7 @@ class InventoryController:
             Logger.info(f"Productos con stock bajo obtenidos: {len(products)}", "INVENTORY_CONTROLLER")
             return products
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return []
 
     def get_inactive_products(self, days_without_movement=30):
@@ -281,7 +281,7 @@ class InventoryController:
             Logger.info(f"Productos sin movimiento obtenidos: {len(products)}", "INVENTORY_CONTROLLER")
             return products
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return []
 
     def search_products(self, query):
@@ -291,7 +291,7 @@ class InventoryController:
             Logger.info(f"Resultados de búsqueda para '{query}': {len(products)} productos", "INVENTORY_CONTROLLER")
             return products
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return []
 
     def get_products_by_category(self, category_id):
@@ -301,7 +301,7 @@ class InventoryController:
             Logger.info(f"Productos por categoría ID {category_id}: {len(products)}", "INVENTORY_CONTROLLER")
             return products
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return []
 
     def export_inventory(self, format="csv", category_id=None, search_query=""):
@@ -374,7 +374,7 @@ class InventoryController:
             return True, filepath
             
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return False, f"Error al exportar: {str(e)}"
 
     def get_inventory_alerts(self):
@@ -392,7 +392,7 @@ class InventoryController:
             Logger.info(f"Alertas de inventario generadas: {alerts['total_alertas']} en total", "INVENTORY_CONTROLLER")
             return alerts
         except Exception as e:
-            Logger.error_exception(e, "INVENTORY_CONTROLLER")
+            Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return {"stock_bajo": [], "sin_movimiento": [], "total_alertas": 0}
 
     # --- Métodos para manejo de paginación y filtros ---
@@ -418,3 +418,22 @@ class InventoryController:
         """Obtiene el número de productos por página."""
         return self.products_per_page
 
+if __name__ == "__main__":
+    # Prueba rápida del controlador
+    controller = InventoryController()
+    
+    # Cargar resumen
+    summary = controller.get_inventory_summary()
+    print("Resumen de inventario:", summary)
+    
+    # Cargar productos (primera página)
+    products, total = controller.get_products()
+    print(f"Productos obtenidos (pág 1): {len(products)} de {total}")
+    
+    # Cargar categorías
+    categories = controller.get_categories()
+    print(f"Categorías cargadas: {len(categories)}")
+    
+    # Cargar alertas
+    alerts = controller.get_inventory_alerts()
+    print(f"Alertas de inventario: {alerts['total_alertas']}")

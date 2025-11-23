@@ -184,20 +184,20 @@ class ProductModel:
             Logger.error(f"Error obteniendo todos los productos: {e}", "PRODUCT_MODEL")
             return []
 
-    def create_product(self, code, name, description, category_id, stock, min_stock, price, state="Disponible", active=True):
+    def create_product(self, codigo, nombre, descripcion, categoria_id, stock, stock_minimo, precio, estado="Disponible", activo=True):
         """
         Crea un nuevo producto.
         
         Args:
-            code (str): Código del producto.
-            name (str): Nombre del producto.
-            description (str): Descripción.
-            category_id (int): ID de la categoría.
+            codigo (str): Código del producto.
+            nombre (str): Nombre del producto.
+            descripcion (str): Descripción.
+            categoria_id (int): ID de la categoría.
             stock (int): Cantidad en stock.
-            min_stock (int): Stock mínimo.
-            price (float): Precio del producto.
-            state (str): Estado inicial del producto.
-            active (bool): Si el producto está activo o no.
+            stock_minimo (int): Stock mínimo.
+            precio (float): Precio del producto.
+            estado (str): Estado inicial del producto.
+            activo (bool): Si el producto está activo o no.
         
         Returns:
             bool: True si se creó, False si falló.
@@ -205,18 +205,18 @@ class ProductModel:
         query = """
             INSERT INTO productos 
             (codigo, nombre, descripcion, categoria_id, stock, stock_minimo, precio, estado, activo)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) -- <-- AGREGAR 'activo'
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        params = (code, name, description, category_id, stock, min_stock, price, state, active)
+        params = (codigo, nombre, descripcion, categoria_id, stock, stock_minimo, precio, estado, activo)
         
         try:
             product_id = self.db.execute_query(query, params=params)
             if product_id:
-                Logger.success(f"Producto '{name}' creado con ID {product_id}", "PRODUCT_MODEL")
+                Logger.success(f"Producto '{nombre}' creado con ID {product_id}", "PRODUCT_MODEL")
                 return True
             return False
         except Exception as e:
-            Logger.error(f"Error creando producto '{name}': {e}", "PRODUCT_MODEL")
+            Logger.error(f"Error creando producto '{nombre}': {e}", "PRODUCT_MODEL")
             return False
 
     def update_product(self, product_id, **kwargs):
@@ -324,3 +324,48 @@ class ProductModel:
             Logger.error(f"Error contando productos por categoría {category_id}: {e}", "PRODUCT_MODEL")
             return 0
 
+    def get_all_products_filtered(self, search="", category_id=None):
+        """
+        Obtiene TODOS los productos activos con filtros (SIN paginación).
+        Útil para exportación de inventario.
+        
+        Args:
+            search (str): Término de búsqueda para nombre/código.
+            category_id (int): ID de categoría para filtrar.
+        
+        Returns:
+            list: Lista de todos los productos activos que coinciden con los filtros.
+        """
+        query = """
+            SELECT 
+                p.id, p.codigo, p.nombre, p.descripcion, p.categoria_id,
+                p.stock, p.stock_minimo, p.precio, p.estado,
+                p.dias_sin_movimiento, p.fecha_creacion, p.fecha_actualizacion,
+                p.activo,
+                c.nombre as categoria_nombre
+            FROM productos p
+            LEFT JOIN categorias c ON p.categoria_id = c.id
+            WHERE p.activo = TRUE
+        """
+        params = []
+
+        # Filtro de búsqueda
+        if search:
+            query += " AND (p.nombre LIKE %s OR p.codigo LIKE %s)"
+            search_param = f"%{search}%"
+            params.extend([search_param, search_param])
+        
+        # Filtro de categoría
+        if category_id:
+            query += " AND p.categoria_id = %s"
+            params.append(category_id)
+        
+        query += " ORDER BY p.nombre ASC"
+        
+        try:
+            result = self.db.execute_query(query, params=params, fetch=True)
+            Logger.info(f"Productos para exportar obtenidos: {len(result) if result else 0}", "PRODUCT_MODEL")
+            return result if result else []
+        except Exception as e:
+            Logger.error(f"Error obteniendo productos para exportar: {e}", "PRODUCT_MODEL")
+            return []
