@@ -113,12 +113,34 @@ class MovementsController:
             Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
             return False, str(e)
 
-    def get_products(self):
-        """Obtiene todos los productos activos para el selector."""
+    def get_products(self, limit=1000):
+        """
+        Obtiene una lista de productos activos para el selector.
+        
+        Args:
+            limit (int): Límite máximo de productos a devolver.
+        
+        Returns:
+            list: Lista de productos.
+        """
         try:
-            products = self.product_model.get_all_products() # Asumiendo que tienes este método
-            Logger.info(f"Productos obtenidos para el selector: {len(products)}", "MOVEMENTS_CONTROLLER")
-            return products
+            # Usar directamente el ProductModel
+            from model.product_model import ProductModel
+            product_model = ProductModel()
+            
+            # Obtener productos activos
+            query = """
+                SELECT id, codigo, nombre, categoria_id, stock, stock_minimo, precio, estado
+                FROM productos
+                WHERE activo = TRUE
+                ORDER BY nombre ASC
+                LIMIT %s
+            """
+            params = (limit,)
+            products = product_model.db.execute_query(query, params=params, fetch=True)
+            
+            Logger.info(f"Productos obtenidos para el selector: {len(products) if products else 0}", "MOVEMENTS_CONTROLLER")
+            return products if products else []
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
             return []
@@ -133,22 +155,3 @@ class MovementsController:
             Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
             return []
 
-if __name__ == "__main__":
-    # Prueba rápida del controlador
-    controller = MovementsController()
-    
-    # Cargar resumen diario
-    summary = controller.get_daily_summary()
-    print("Resumen diario:", summary)
-    
-    # Cargar movimientos (primera página)
-    movements, total = controller.get_movements()
-    print(f"Movimientos obtenidos (pág 1): {len(movements)} de {total}")
-    
-    # Cargar productos
-    products = controller.get_products()
-    print(f"Productos cargados: {len(products)}")
-    
-    # Cargar usuarios
-    users = controller.get_users()
-    print(f"Usuarios cargados: {len(users)}")

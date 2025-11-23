@@ -59,6 +59,41 @@ class Validators:
             return False, msg
 
         return True, ""
+    
+    def validate_movement_data(product_id, quantity, movement_type, reason):
+        """
+        Valida los datos para registrar un movimiento de inventario.
+        
+        Args:
+            product_id (int): ID del producto.
+            quantity (int): Cantidad a mover.
+            movement_type (str): Tipo de movimiento ('Entrada' o 'Salida').
+            reason (str): Motivo del movimiento.
+        
+        Returns:
+            tuple: (bool: es_válido, str: mensaje_de_error).
+        """
+        # Validar ID del producto
+        if not isinstance(product_id, int) or product_id <= 0:
+            return False, "El ID del producto debe ser un número entero positivo."
+
+        # Validar cantidad
+        if not isinstance(quantity, int) or quantity <= 0:
+            return False, "La cantidad debe ser un número entero positivo."
+
+        # Validar tipo de movimiento
+        if movement_type not in ['Entrada', 'Salida']:
+            return False, "El tipo de movimiento debe ser 'Entrada' o 'Salida'."
+
+        # Validar motivo
+        if not isinstance(reason, str) or not reason.strip():
+            return False, "El motivo no puede estar vacío."
+
+        if len(reason.strip()) < 3:
+            return False, "El motivo debe tener al menos 3 caracteres."
+
+        # Si todo es válido
+        return True, ""
 
     @staticmethod
     def validate_category_name(name):

@@ -1,5 +1,5 @@
 """
-NoteBox - Vista del Módulo de Movimientos
+NoteBox - Vista del Módulo de Movimientos (Corregido y Funcional)
 Ubicación: view/movements_view.py
 """
 
@@ -13,7 +13,7 @@ from controller.movements_controller import MovementsController
 from utils.logger import Logger
 from utils.helpers import Helpers
 
-class MovimientosView(BaseView):
+class MovementsView(BaseView):
     """Vista del Módulo de Movimientos."""
 
     def __init__(self, user_data):
@@ -25,15 +25,16 @@ class MovimientosView(BaseView):
         self.daily_summary = {"entradas": 0, "salidas": 0, "count_entradas": 0, "count_salidas": 0}
         self.products = {}
         self.users = {}
+        self.movement_type = "Entrada"
 
         # Instancia del controlador
         self.controller = MovementsController()
-        self.controller.set_current_user(user_data) # Pasar datos del usuario actual al controlador
+        self.controller.set_current_user(user_data)
 
         # Llamar al constructor de la clase base
         super().__init__(
             user_data=user_data,
-            page_id="movimientos", # Este ID debe coincidir con el del sidebar
+            page_id="movimientos",
             page_title="Movimientos de Inventario",
             page_subtitle="Registrar y visualizar entradas y salidas de productos"
         )
@@ -42,9 +43,6 @@ class MovimientosView(BaseView):
         """Crea el contenido específico del módulo de movimientos."""
         # Frame principal para el contenido (heredado de BaseView)
         content_frame = self.content_frame
-
-        # Header
-        self.create_header(content_frame)
 
         # Contenido principal (2 columnas)
         main_container = ctk.CTkFrame(content_frame, fg_color="transparent")
@@ -117,8 +115,7 @@ class MovimientosView(BaseView):
             text_color="#2b2d42"
         ).pack(anchor="w", pady=(0, 10))
 
-        # Combobox para seleccionar producto
-        self.product_combo = ctk.CTkComboBox(product_frame, values=["Seleccione un producto"])
+        self.product_combo = ctk.CTkComboBox(product_frame, values=["Cargando..."])
         self.product_combo.pack(fill="x", pady=(0, 10))
 
         # Cantidad
@@ -310,89 +307,17 @@ class MovimientosView(BaseView):
         footer_frame = ctk.CTkFrame(history_frame, fg_color="transparent")
         footer_frame.pack(fill="x", pady=(0, 10))
 
-        ctk.CTkLabel(
+        self.pagination_label = ctk.CTkLabel(
             footer_frame,
-            text="Mostrando últimos 5 movimientos",
+            text="Mostrando 0 movimientos",
             font=ctk.CTkFont(size=11),
             text_color="#6c757d",
             anchor="w"
-        ).pack(side="left")
-
-        ctk.CTkLabel(
-            footer_frame,
-            text="Ver historial completo →",
-            font=ctk.CTkFont(size=12),
-            text_color="#00b4d8",
-            cursor="hand2",
-            anchor="w"
-        ).pack(side="right")
+        )
+        self.pagination_label.pack(side="left")
 
         # Cargar datos iniciales
         self.load_data()
-
-    def create_header(self, parent):
-        """Crea el header de la vista."""
-        header = ctk.CTkFrame(parent, fg_color="white", height=70, corner_radius=0)
-        header.pack(fill="x")
-        header.pack_propagate(False)
-
-        header_left = ctk.CTkFrame(header, fg_color="white")
-        header_left.pack(side="left", padx=30, pady=15)
-
-        ctk.CTkButton(
-            header_left,
-            text="☰",
-            width=40,
-            height=40,
-            fg_color="transparent",
-            text_color="#2b2d42",
-            hover_color="#f8f9fa",
-            font=ctk.CTkFont(size=20)
-        ).pack(side="left", padx=(0, 20))
-
-        header_text = ctk.CTkFrame(header_left, fg_color="white")
-        header_text.pack(side="left")
-
-        ctk.CTkLabel(
-            header_text,
-            text="Movimientos de Inventario",
-            font=ctk.CTkFont(size=18, weight="bold"),
-            text_color="#2b2d42",
-            anchor="w"
-        ).pack(anchor="w")
-
-        ctk.CTkLabel(
-            header_text,
-            text="Registrar y visualizar entradas y salidas de productos",
-            font=ctk.CTkFont(size=12),
-            text_color="#8d99ae",
-            anchor="w"
-        ).pack(anchor="w")
-
-        # Notificación
-        notif_btn = ctk.CTkButton(
-            header,
-            text="🔔",
-            width=40,
-            height=40,
-            fg_color="transparent",
-            hover_color="#f8f9fa",
-            font=ctk.CTkFont(size=18),
-            corner_radius=8
-        )
-        notif_btn.pack(side="right", padx=30)
-
-        badge = ctk.CTkLabel(
-            notif_btn,
-            text="3",
-            font=ctk.CTkFont(size=9, weight="bold"),
-            text_color="white",
-            fg_color="#ef233c",
-            corner_radius=10,
-            width=18,
-            height=18
-        )
-        badge.place(relx=0.7, rely=0.2, anchor="center")
 
     def set_movement_type(self, movement_type):
         """Cambiar tipo de movimiento y actualizar UI."""
@@ -430,11 +355,11 @@ class MovimientosView(BaseView):
     def load_data(self):
         """Carga los datos iniciales: productos, usuarios, resumen diario y movimientos."""
         try:
-            # Cargar productos
-            products = self.controller.get_products()
+            # Cargar productos (usando get_products sin paginación)
+            products = self.controller.get_products(limit=1000) # Asumiendo que get_products devuelve (productos, total)
             self.products = {p['id']: p for p in products}
             product_names = [p['nombre'] for p in products]
-            self.product_combo.configure(values=product_names)
+            self.product_combo.configure(values=product_names if product_names else ["No hay productos"])
 
             # Cargar resumen diario
             self.daily_summary = self.controller.get_daily_summary()
@@ -457,7 +382,7 @@ class MovimientosView(BaseView):
 
             # Actualizar UI
             self.update_movements_list()
-            self.update_pagination_label()
+            self.update_pagination_label() # <-- Método corregido
 
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_VIEW")
@@ -470,7 +395,6 @@ class MovimientosView(BaseView):
             widget.destroy()
 
         if not self.movements:
-            # Mensaje si no hay movimientos
             no_movements_label = ctk.CTkLabel(
                 self.movements_list,
                 text="No hay movimientos registrados.",
@@ -480,7 +404,6 @@ class MovimientosView(BaseView):
             no_movements_label.pack(expand=True)
             return
 
-        # Crear filas para cada movimiento
         for movement in self.movements:
             self.create_movement_row(self.movements_list, movement)
 
@@ -510,7 +433,6 @@ class MovimientosView(BaseView):
         product_frame = ctk.CTkFrame(row, fg_color="white")
         product_frame.pack(side="left", expand=True, padx=5)
 
-        # Icono genérico
         icon_frame = ctk.CTkFrame(product_frame, fg_color="#E0F7FA", width=32, height=32, corner_radius=8)
         icon_frame.pack(side="left", padx=(0, 5))
         icon_frame.pack_propagate(False)
@@ -568,6 +490,13 @@ class MovimientosView(BaseView):
         self.exit_count_label.configure(text=f"{self.daily_summary['salidas']} unidades")
         self.exit_motions_label.configure(text=f"{self.daily_summary['count_salidas']} movimientos registrados")
 
+    def update_pagination_label(self):
+        """Actualiza el texto de la paginación."""
+        if self.total_movements == 0:
+            self.pagination_label.configure(text="No hay movimientos para mostrar")
+        else:
+            self.pagination_label.configure(text=f"Mostrando {len(self.movements)} movimientos")
+
     def save_movement(self):
         """Guarda el movimiento registrado."""
         # Validar campos
@@ -575,7 +504,11 @@ class MovimientosView(BaseView):
         quantity_str = self.quantity_entry.get().strip()
         motive = self.motive_entry.get().strip()
 
-        if not product_name or not quantity_str or not motive:
+        if product_name == "Cargando..." or product_name == "No hay productos" or not product_name:
+            self.show_message("Seleccione un producto válido.", "error")
+            return
+
+        if not quantity_str or not motive:
             self.show_message("Por favor, complete todos los campos.", "error")
             return
 
@@ -599,7 +532,6 @@ class MovimientosView(BaseView):
             self.show_message("Producto no válido.", "error")
             return
 
-        # Obtener notas
         notes = self.notes_textbox.get("1.0", "end-1c").strip()
 
         # Usar el controlador para registrar el movimiento
@@ -613,14 +545,10 @@ class MovimientosView(BaseView):
 
         if success:
             Logger.success(f"Movimiento registrado: {message}", "MOVEMENTS_VIEW")
-            # Refrescar la lista de movimientos
             self.load_movements()
-            # Actualizar el resumen diario
             self.daily_summary = self.controller.get_daily_summary()
             self.update_daily_summary()
-            # Mostrar mensaje de éxito
             self.show_message(message, "success")
-            # Limpiar el formulario
             self.clear_form()
         else:
             Logger.error(f"Error al registrar movimiento: {message}", "MOVEMENTS_VIEW")
@@ -628,12 +556,14 @@ class MovimientosView(BaseView):
 
     def clear_form(self):
         """Limpia el formulario de registro."""
-        self.product_combo.set("Seleccione un producto")
+        if self.products:
+            self.product_combo.set(list(self.products.values())[0]['nombre'])
+        else:
+            self.product_combo.set("No hay productos")
         self.quantity_entry.delete(0, "end")
         self.motive_entry.delete(0, "end")
         self.notes_textbox.delete("1.0", "end")
         self.notes_textbox.insert("1.0", "Observaciones adicionales...")
-        # Resetear el tipo de movimiento a Entrada
         self.set_movement_type("Entrada")
 
     def show_message(self, message, msg_type="info"):
@@ -649,17 +579,14 @@ class MovimientosView(BaseView):
         popup.transient(self)
         popup.grab_set()
 
-        # Centrar popup
         popup.update_idletasks()
         x = self.winfo_x() + (self.winfo_width() // 2) - (300 // 2)
         y = self.winfo_y() + (self.winfo_height() // 2) - (100 // 2)
         popup.geometry(f"300x100+{x}+{y}")
 
-        # Frame para contenido
         content_frame = ctk.CTkFrame(popup, fg_color="transparent")
         content_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-        # Icono según tipo de mensaje
         icon_path = ""
         if msg_type == "success":
             icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert_info.png")
@@ -677,11 +604,9 @@ class MovimientosView(BaseView):
             icon_label = ctk.CTkLabel(content_frame, image=icon_img, text="")
             icon_label.pack(side="left", padx=(0, 10))
         except:
-            # Fallback a emoji si no se puede cargar el ícono
             fallback_emoji = {"info": "ℹ️", "success": "✅", "warning": "⚠️", "error": "❌"}
             ctk.CTkLabel(content_frame, text=fallback_emoji.get(msg_type, "ℹ️"), font=ctk.CTkFont(size=16)).pack(side="left", padx=(0, 10))
 
-        # Texto del mensaje
         label = ctk.CTkLabel(
             content_frame, text=message,
             font=ctk.CTkFont(size=13, weight="bold"),

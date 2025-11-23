@@ -358,8 +358,8 @@ class DashboardView(BaseView):
             from view.inventory_view import InventarioView
             InventarioView(self.user_data).run()
         elif page_id == "movimientos":
-            from view.movements_view import MovimientosView
-            MovimientosView(self.user_data).run()
+            from view.movements_view import MovementsView
+            MovementsView(self.user_data).run()
         elif page_id == "reportes":
             from view.reports_view import ReportesView
             ReportesView(self.user_data).run()
