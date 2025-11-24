@@ -364,14 +364,14 @@ class DashboardView(BaseView):
             from view.reports_view import ReportesView
             ReportesView(self.user_data).run()
         elif page_id == "usuarios":
-            from view.users_view import UsuariosView
-            UsuariosView(self.user_data).run()
+            from view.users_view import UsersView
+            UsersView(self.user_data).run()
         elif page_id == "configuracion":
             from view.settings_view import ConfiguracionView
             ConfiguracionView(self.user_data).run()
         elif page_id == "ayuda":
-            from view.help_view import AyudaView
-            AyudaView(self.user_data).run()
+            from view.help_view import HelpView
+            HelpView(self.user_data).run()
     
     def get_notification_count(self):
         return len(self.active_alerts)

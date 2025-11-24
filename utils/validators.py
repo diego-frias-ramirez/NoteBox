@@ -227,3 +227,40 @@ class Validators:
         if errors:
             return False, "\n".join(errors)
         return True, ""
+
+        # EN utils/validators.py
+
+    @staticmethod
+    def validate_user_data(data, update=False):
+        """
+        Valida los datos para crear o actualizar un usuario.
+        
+        Args:
+            data (dict): Datos del usuario.
+            update (bool): Si es para una actualización (la contraseña es opcional).
+        
+        Returns:
+            tuple: (bool: es_válido, str: mensaje_de_error).
+        """
+        required_fields = ['nombre', 'username', 'email', 'rol']
+        if not update:
+            required_fields.append('password')
+
+        for field in required_fields:
+            if field not in data or not data[field].strip():
+                return False, f"El campo '{field}' es obligatorio."
+
+        # Validar email
+        if not Validators.validate_email(data['email']):
+            return False, "El formato del correo electrónico no es válido."
+
+        # Validar contraseña (solo si es creación o si se proporciona en actualización)
+        if 'password' in data and data['password']:
+            if len(data['password']) < 6:
+                return False, "La contraseña debe tener al menos 6 caracteres."
+
+        # Validar rol
+        if data['rol'] not in ['admin', 'empleado']:
+            return False, "El rol debe ser 'admin' o 'empleado'."
+
+        return True, ""

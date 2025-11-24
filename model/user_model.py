@@ -146,3 +146,99 @@ class UserModel:
         except Exception as e:
             Logger.error_exception(e, "USER_MODEL")
             return []
+
+    # EN model/user_model.py
+
+    def get_users(self, search="", role=None, limit=5, offset=0):
+        """
+        Obtiene usuarios con paginación y filtros.
+        """
+        query = """
+            SELECT id, usuario as username, nombre, email, rol, estado, ultimo_acceso
+            FROM usuarios
+            WHERE 1=1
+        """
+        params = []
+
+        if search:
+            query += " AND (nombre LIKE %s OR usuario LIKE %s OR email LIKE %s)"
+            search_param = f"%{search}%"
+            params.extend([search_param, search_param, search_param])
+
+        if role:
+            query += " AND rol = %s"
+            params.append(role)
+
+        query += " ORDER BY nombre ASC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+
+        try:
+            result = self.db.execute_query(query, params=params, fetch=True)
+            Logger.info(f"Usuarios obtenidos: {len(result) if result else 0}", "USER_MODEL")
+            return result if result else []
+        except Exception as e:
+            Logger.error_exception(e, "USER_MODEL")
+            return []
+
+    def get_total_users(self, search="", role=None):
+        """
+        Obtiene el total de usuarios (para paginación).
+        """
+        query = "SELECT COUNT(*) as total FROM usuarios WHERE 1=1"
+        params = []
+
+        if search:
+            query += " AND (nombre LIKE %s OR usuario LIKE %s OR email LIKE %s)"
+            search_param = f"%{search}%"
+            params.extend([search_param, search_param, search_param])
+
+        if role:
+            query += " AND rol = %s"
+            params.append(role)
+
+        try:
+            result = self.db.execute_query(query, params=params, fetch=True)
+            total = result[0]['total'] if result else 0
+            Logger.info(f"Total de usuarios: {total}", "USER_MODEL")
+            return total
+        except Exception as e:
+            Logger.error_exception(e, "USER_MODEL")
+            return 0
+
+    def get_users_count_by_role(self, role):
+        """
+        Obtiene el número de usuarios por rol.
+        """
+        query = "SELECT COUNT(*) as count FROM usuarios WHERE rol = %s"
+        try:
+            result = self.db.execute_query(query, params=(role,), fetch=True)
+            count = result[0]['count'] if result else 0
+            Logger.info(f"Usuarios con rol '{role}': {count}", "USER_MODEL")
+            return count
+        except Exception as e:
+            Logger.error_exception(e, "USER_MODEL")
+            return 0
+
+    def create_user(self, nombre, username, email, password, rol):
+        """
+        Crea un nuevo usuario.
+        """
+        # Hashear la contraseña (usa una librería segura en producción)
+        import hashlib
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+
+        query = """
+            INSERT INTO usuarios (usuario, contrasena, nombre, email, rol)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        params = (username, hashed_password, nombre, email, rol)
+
+        try:
+            user_id = self.db.execute_query(query, params=params)
+            if user_id:
+                Logger.success(f"Usuario '{nombre}' creado con ID {user_id}", "USER_MODEL")
+                return True
+            return False
+        except Exception as e:
+            Logger.error_exception(e, "USER_MODEL")
+            return False
