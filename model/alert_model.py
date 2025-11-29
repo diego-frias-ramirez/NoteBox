@@ -29,7 +29,7 @@ class AlertModel:
             Logger.log_database_operation("SELECT", "alertas", True, f"{len(result) if result else 0} alertas activas")
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "ALERT_MODEL")
+            Logger.log_error_exception(e, "ALERT_MODEL")
             return []
 
     @staticmethod
@@ -69,7 +69,7 @@ class AlertModel:
                 return True
             return False
         except Exception as e:
-            Logger.error_exception(e, "ALERT_MODEL")
+            Logger.log_error_exception(e, "ALERT_MODEL")
             return False
 
     @staticmethod
@@ -100,7 +100,7 @@ class AlertModel:
                 return result
             return None
         except Exception as e:
-            Logger.error_exception(e, "ALERT_MODEL")
+            Logger.log_error_exception(e, "ALERT_MODEL")
             return None
 
     # Métodos para operaciones CRUD adicionales si se necesitan

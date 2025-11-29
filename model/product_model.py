@@ -51,7 +51,7 @@ class ProductModel:
             Logger.info(f"Total productos obtenidos (con filtros): {total}", "PRODUCT_MODEL")
             return total
         except Exception as e:
-            Logger.error_exception(e, "PRODUCT_MODEL")
+            Logger.log_error_exception(e, "PRODUCT_MODEL")
             return 0
 
     def get_products(self, search="", category_id=None, limit=10, offset=0):

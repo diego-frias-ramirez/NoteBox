@@ -15,24 +15,6 @@ class NotificationsView(BaseView):
 
     def __init__(self, user_data):
         super().__init__(
-            user_data=user_data,
-            page_id="notificaciones", # Este ID debe coincidir con el del sidebar (si lo agregas ahí)
-            page_title="Centro de Notificaciones",
-            page_subtitle="Gestiona tus alertas y avisos"
-        )
-        
-        # Instancia del modelo de alertas
-        self.alert_model = AlertModel()
-
-    def create_content(self):
-        """Crea el contenido específico del módulo de notificaciones."""
-        # Frame principal para el contenido
-        content_frame = self.content_frame # Heredado de BaseView
-
-        # Título principal
-        title_label = ctk.CTkLabel(
-            content_frame,
-            text="Tus Notificaciones",
             font=ctk.CTkFont(size=24, weight="bold")
         )
         title_label.pack(anchor="w", pady=(0, 20))

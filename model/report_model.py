@@ -75,7 +75,7 @@ class ReportModel:
             Logger.log_database_operation("SELECT", "productos_por_categoria", True, f"{len(result) if result else 0} categorías")
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "REPORT_MODEL")
+            Logger.log_error_exception(e, "REPORT_MODEL")
             return []
     
     @staticmethod
@@ -90,7 +90,7 @@ class ReportModel:
             Logger.log_database_operation("SELECT", "vista_alertas_stock", True, f"{len(result) if result else 0} productos")
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "REPORT_MODEL")
+            Logger.log_error_exception(e, "REPORT_MODEL")
             return []
     
     @staticmethod
@@ -111,7 +111,7 @@ class ReportModel:
             Logger.log_database_operation("SELECT", "productos_top_valor", True, f"{len(result) if result else 0} productos")
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "REPORT_MODEL")
+            Logger.log_error_exception(e, "REPORT_MODEL")
             return []
         
     
