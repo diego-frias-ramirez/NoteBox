@@ -90,7 +90,7 @@ class MovementsController:
         
         try:
             # Registrar el movimiento
-            movement_id = self.movement_model.register_movement(
+            movement_id, error_msg = self.movement_model.register_movement(
                 product_id=product_id,
                 quantity=quantity,
                 movement_type=movement_type,
@@ -106,9 +106,9 @@ class MovementsController:
                     Logger.log_user_action("REGISTRAR_MOVIMIENTO", self.current_user['nombre'], details=f"ID: {movement_id}, Tipo: {movement_type}, Producto: {product_id}, Cantidad: {quantity}")
                 return True, f"Movimiento registrado correctamente (ID: {movement_id})"
             else:
-                error_msg = "No se pudo registrar el movimiento"
-                Logger.error(error_msg, "MOVEMENTS_CONTROLLER")
-                return False, error_msg
+                final_error_msg = error_msg if error_msg else "No se pudo registrar el movimiento"
+                Logger.error(final_error_msg, "MOVEMENTS_CONTROLLER")
+                return False, final_error_msg
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
             return False, str(e)

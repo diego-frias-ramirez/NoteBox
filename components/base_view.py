@@ -68,6 +68,7 @@ class BaseView(ctk.CTk):
             subtitle=self.page_subtitle,
             on_menu_toggle=self.toggle_sidebar,
             on_notifications=self.show_notifications,
+            notification_count=self.get_notification_count()
         )
         self.header.pack(fill="x")
         
@@ -133,9 +134,122 @@ class BaseView(ctk.CTk):
             self.sidebar.pack(side="left", fill="y", before=self.main_container)
     
     def show_notifications(self):
-        """Muestra el panel de notificaciones."""
-        # Implementar popup de notificaciones
-        print("Mostrar notificaciones")
+        """Muestra un popup con las notificaciones."""
+        # Crear ventana modal
+        popup = ctk.CTkToplevel(self)
+        popup.title("Notificaciones")
+        popup.geometry("500x600")
+        popup.resizable(True, True)
+        popup.configure(fg_color="#FAFAFA")
+        
+        # Centrar popup respecto a la ventana principal
+        popup.transient(self)
+        popup.grab_set()
+        popup.update_idletasks()
+        x = self.winfo_x() + (self.winfo_width() - 500) // 2
+        y = self.winfo_y() + (self.winfo_height() - 600) // 2
+        popup.geometry(f"+{x}+{y}")
+        
+        # Header del popup
+        header_frame = ctk.CTkFrame(popup, fg_color="#FFFFFF", height=60)
+        header_frame.pack(fill="x")
+        header_frame.pack_propagate(False)
+        
+        ctk.CTkLabel(
+            header_frame,
+            text="Notificaciones",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="#1E293B"
+        ).pack(side="left", padx=20, pady=15)
+        
+        # Contenedor de notificaciones
+        content_frame = ctk.CTkScrollableFrame(
+            popup,
+            fg_color="transparent",
+            scrollbar_button_color="#CBD5E1"
+        )
+        content_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        
+        # Obtener notificaciones
+        try:
+            from model.alert_model import AlertModel
+            alert_model = AlertModel()
+            notifications = alert_model.get_unread_alerts()
+            
+            if not notifications:
+                no_notif_label = ctk.CTkLabel(
+                    content_frame,
+                    text="No hay notificaciones nuevas",
+                    font=ctk.CTkFont(size=14),
+                    text_color="#6B7280"
+                )
+                no_notif_label.pack(expand=True)
+            else:
+                for alert in notifications:
+                    # Frame para cada notificación
+                    notif_frame = ctk.CTkFrame(
+                        content_frame,
+                        fg_color="#F8FAFC",
+                        corner_radius=8,
+                        border_width=1,
+                        border_color="#E2E8F0"
+                    )
+                    notif_frame.pack(fill="x", pady=8)
+                    
+                    # Contenido
+                    inner_frame = ctk.CTkFrame(notif_frame, fg_color="transparent")
+                    inner_frame.pack(fill="both", expand=True, padx=12, pady=12)
+                    
+                    # Tipo de alerta
+                    tipo_label = ctk.CTkLabel(
+                        inner_frame,
+                        text=f"[{alert.get('tipo', 'General')}]",
+                        font=ctk.CTkFont(size=12, weight="bold"),
+                        text_color="#00B4D8"
+                    )
+                    tipo_label.pack(anchor="w")
+                    
+                    # Descripción
+                    desc_label = ctk.CTkLabel(
+                        inner_frame,
+                        text=alert.get('descripcion', 'Sin descripción'),
+                        font=ctk.CTkFont(size=12),
+                        text_color="#1E293B",
+                        wraplength=420,
+                        justify="left"
+                    )
+                    desc_label.pack(anchor="w", pady=(5, 0))
+                    
+                    # Fecha
+                    fecha_label = ctk.CTkLabel(
+                        inner_frame,
+                        text=alert.get('fecha_alerta', 'Fecha desconocida'),
+                        font=ctk.CTkFont(size=10),
+                        text_color="#9CA3AF"
+                    )
+                    fecha_label.pack(anchor="w", pady=(5, 0))
+                    
+        except Exception as e:
+            error_label = ctk.CTkLabel(
+                content_frame,
+                text="Error al cargar notificaciones",
+                font=ctk.CTkFont(size=14),
+                text_color="#EF4444"
+            )
+            error_label.pack(expand=True)
+            print(f"Error en show_notifications: {e}")
+        
+        # Botón cerrar
+        close_btn = ctk.CTkButton(
+            popup,
+            text="Cerrar",
+            command=popup.destroy,
+            fg_color="#00B4D8",
+            text_color="white",
+            hover_color="#0099B3",
+            height=35
+        )
+        close_btn.pack(fill="x", padx=15, pady=(0, 15))
     
     def get_notification_count(self):
         """Obtiene el número de notificaciones (sobreescribir en subclases)."""

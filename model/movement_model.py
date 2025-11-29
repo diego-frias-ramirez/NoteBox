@@ -54,24 +54,32 @@ class MovementModel:
                     check_stock_query = "SELECT stock FROM productos WHERE id = %s"
                     current_stock = self.db.execute_query(check_stock_query, params=(product_id,), fetch=True)
                     if not current_stock or current_stock[0]['stock'] < quantity:
-                        Logger.error(f"Stock insuficiente para salida del producto ID {product_id}. Stock actual: {current_stock[0]['stock'] if current_stock else 0}, Cantidad solicitada: {quantity}", "MOVEMENT_MODEL")
-                        return None
+                        msg = f"Stock insuficiente para salida del producto ID {product_id}. Stock actual: {current_stock[0]['stock'] if current_stock else 0}, Cantidad solicitada: {quantity}"
+                        Logger.error(msg, "MOVEMENT_MODEL")
+                        return None, msg
                 
                 # Ejecutar la actualización del stock
-                rows_affected = self.db.execute_query(update_stock_query, params=(quantity, product_id))
+                if movement_type == "Entrada":
+                    stock_params = (quantity, product_id)
+                else:
+                    stock_params = (quantity, product_id, quantity)
+
+                rows_affected = self.db.execute_query(update_stock_query, params=stock_params)
                 
                 if rows_affected > 0:
                     Logger.success(f"Movimiento ID {movement_id} registrado y stock actualizado", "MOVEMENT_MODEL")
-                    return movement_id
+                    return movement_id, None
                 else:
-                    Logger.error(f"No se pudo actualizar el stock del producto ID {product_id} después del movimiento", "MOVEMENT_MODEL")
-                    return None
+                    msg = f"No se pudo actualizar el stock del producto ID {product_id} después del movimiento"
+                    Logger.error(msg, "MOVEMENT_MODEL")
+                    return None, msg
             else:
-                Logger.error("No se pudo registrar el movimiento en la base de datos", "MOVEMENT_MODEL")
-                return None
+                msg = "No se pudo registrar el movimiento en la base de datos"
+                Logger.error(msg, "MOVEMENT_MODEL")
+                return None, msg
         except Exception as e:
-            Logger.error_exception(e, "MOVEMENT_MODEL")
-            return None
+            Logger.log_error_exception(e, "MOVEMENT_MODEL")
+            return None, str(e)
 
     def get_movements(self, limit=5, offset=0):
         """
@@ -100,7 +108,7 @@ class MovementModel:
             Logger.info(f"Obtenidos {len(result) if result else 0} movimientos", "MOVEMENT_MODEL")
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "MOVEMENT_MODEL")
+            Logger.log_error_exception(e, "MOVEMENT_MODEL")
             return []
 
     def get_movements_by_product(self, product_id):
@@ -129,7 +137,7 @@ class MovementModel:
             Logger.info(f"Obtenidos {len(result) if result else 0} movimientos para el producto ID {product_id}", "MOVEMENT_MODEL")
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "MOVEMENT_MODEL")
+            Logger.log_error_exception(e, "MOVEMENT_MODEL")
             return []
 
     def get_total_movements(self):
@@ -146,7 +154,7 @@ class MovementModel:
             Logger.info(f"Total de movimientos obtenidos: {total}", "MOVEMENT_MODEL")
             return total
         except Exception as e:
-            Logger.error_exception(e, "MOVEMENT_MODEL")
+            Logger.log_error_exception(e, "MOVEMENT_MODEL")
             return 0
 
     def get_daily_summary(self):
@@ -177,6 +185,6 @@ class MovementModel:
             Logger.info(f"Resumen diario obtenido: {summary}", "MOVEMENT_MODEL")
             return summary
         except Exception as e:
-            Logger.error_exception(e, "MOVEMENT_MODEL")
+            Logger.log_error_exception(e, "MOVEMENT_MODEL")
             return {"entradas": 0, "salidas": 0, "count_entradas": 0, "count_salidas": 0}
 

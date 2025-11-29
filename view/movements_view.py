@@ -160,6 +160,8 @@ class MovementsView(BaseView):
         self.notes_textbox = ctk.CTkTextbox(notes_frame, height=100)
         self.notes_textbox.pack(fill="x", pady=(0, 10))
         self.notes_textbox.insert("1.0", "Observaciones adicionales...")
+        self.notes_textbox.bind("<FocusIn>", self.on_notes_focus_in)
+        self.notes_textbox.bind("<FocusOut>", self.on_notes_focus_out)
 
         # Botón Guardar
         save_btn = ctk.CTkButton(
@@ -614,5 +616,19 @@ class MovementsView(BaseView):
         )
         label.pack(side="left", expand=True)
 
+
         popup.after(3000, popup.destroy)
 
+    def on_notes_focus_in(self, event):
+        """Maneja el evento de foco en el campo de notas (borra placeholder)."""
+        current_text = self.notes_textbox.get("1.0", "end-1c").strip()
+        if current_text == "Observaciones adicionales...":
+            self.notes_textbox.delete("1.0", "end")
+            self.notes_textbox.configure(text_color="#2b2d42") # Color normal
+
+    def on_notes_focus_out(self, event):
+        """Maneja el evento de pérdida de foco en el campo de notas (restaura placeholder)."""
+        current_text = self.notes_textbox.get("1.0", "end-1c").strip()
+        if not current_text:
+            self.notes_textbox.insert("1.0", "Observaciones adicionales...")
+            self.notes_textbox.configure(text_color="#6c757d") # Color gris placeholder
