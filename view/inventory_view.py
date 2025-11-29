@@ -12,7 +12,7 @@ from controller.inventory_controller import InventoryController
 from utils.logger import Logger
 from utils.helpers import Helpers
 
-class InventarioView(BaseView):
+class InventoryView(BaseView):
     """Vista del Módulo de Inventario."""
 
     def __init__(self, user_data):

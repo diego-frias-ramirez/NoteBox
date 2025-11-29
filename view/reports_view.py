@@ -12,7 +12,7 @@ from components.base_view import BaseView
 from controller.reports_controller import ReportsController
 from utils.logger import Logger
 
-class ReportesView(BaseView):
+class ReportsView(BaseView):
     """Vista del Módulo de Reportes."""
 
     def __init__(self, user_data):

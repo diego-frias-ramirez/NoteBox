@@ -9,7 +9,6 @@ import os
 from datetime import datetime
 
 from components.base_view import BaseView
-from controller.settings_controller import SettingsController
 from utils.logger import Logger
 
 class ConfiguracionView(BaseView):
@@ -20,16 +19,30 @@ class ConfiguracionView(BaseView):
         self.icon_refs = {}
         self.has_unsaved_changes = False
         
-        # Instancia del controlador
-        self.controller = SettingsController(user_data)
-        
-        # Cargar datos iniciales
-        self.system_info = {}
-        self.company_settings = {}
-        self.alert_settings = {}
-        self.backup_settings = {}
-        self.storage_info = {}
-        self.load_data()
+        # Instancia del controlador (import perezoso para evitar crash en import)
+        try:
+            from controller.settings_controller import SettingsController
+            self.controller = SettingsController(user_data)
+
+            # Cargar datos iniciales
+            self.system_info = {}
+            self.company_settings = {}
+            self.alert_settings = {}
+            self.backup_settings = {}
+            self.storage_info = {}
+            self.load_data()
+        except Exception as e:
+            Logger.error(f"Error inicializando módulo de configuración: {e}", "SETTINGS_VIEW")
+            self.controller = None
+            self.system_info = {}
+            self.company_settings = {}
+            self.alert_settings = {}
+            self.backup_settings = {
+                'auto_backup': True,
+                'backup_frequency_days': 7,
+                'retention_days': 30
+            }
+            self.storage_info = {}
         
         # Llamar al constructor de la clase base
         super().__init__(
@@ -42,6 +55,10 @@ class ConfiguracionView(BaseView):
     def load_data(self):
         """Carga datos desde el controlador."""
         try:
+            if not self.controller:
+                Logger.error("Controlador de configuración no disponible, usando valores por defecto", "SETTINGS_VIEW")
+                return
+
             self.system_info = self.controller.get_system_info()
             self.company_settings = self.controller.get_company_settings()
             self.alert_settings = self.controller.get_alert_settings()
@@ -579,6 +596,11 @@ class ConfiguracionView(BaseView):
                 return
             
             # Guardar configuración de empresa
+            if not self.controller:
+                Logger.error("Intento de guardar configuración sin controlador disponible", "SETTINGS_VIEW")
+                self.show_message("No se puede guardar: módulo de configuración no disponible", "error")
+                return
+
             success, message = self.controller.update_company_settings(company_data)
             
             if success:
@@ -614,6 +636,11 @@ class ConfiguracionView(BaseView):
     def create_backup_now(self):
         """Crea un backup manual."""
         try:
+            if not self.controller:
+                Logger.error("Intento de backup sin controlador disponible", "SETTINGS_VIEW")
+                self.show_message("No se puede crear backup: módulo de configuración no disponible", "error")
+                return
+
             success, result = self.controller.create_backup()
             
             if success:
