@@ -198,8 +198,8 @@ class UsersController:
         """Obtiene los roles disponibles para asignar a usuarios."""
         try:
             roles = [
-                {"id": "admin", "name": "Administrador", "description": "Acceso completo al sistema"},
-                {"id": "empleado", "name": "Empleado", "description": "Acceso limitado según permisos"}
+                {"id": "Admin", "name": "Administrador", "description": "Acceso completo al sistema"},
+                {"id": "Empleado", "name": "Empleado", "description": "Acceso limitado según permisos"}
             ]
             Logger.info(f"Roles obtenidos: {len(roles)}", "USERS_CONTROLLER")
             return roles
@@ -211,8 +211,8 @@ class UsersController:
         """Obtiene un resumen de usuarios por rol."""
         try:
             summary = {
-                "admin": self.user_model.get_users_count_by_role("admin"),
-                "empleado": self.user_model.get_users_count_by_role("empleado"),
+                "admin": self.user_model.get_users_count_by_role("Admin"),
+                "empleado": self.user_model.get_users_count_by_role("Empleado"),
                 "total": self.user_model.get_total_users()
             }
             Logger.info(f"Resumen de usuarios: {summary}", "USERS_CONTROLLER")

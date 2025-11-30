@@ -9,6 +9,10 @@ from datetime import datetime
 class UserModel:
     """Modelo para manejar usuarios del sistema"""
     
+    def __init__(self):
+        """Inicializa el modelo con la conexión a la base de datos."""
+        self.db = Database()
+    
     @staticmethod
     def authenticate(username, password):
         """
@@ -147,8 +151,6 @@ class UserModel:
             Logger.error_exception(e, "USER_MODEL")
             return []
 
-    # EN model/user_model.py
-
     def get_users(self, search="", role=None, limit=5, offset=0):
         """
         Obtiene usuarios con paginación y filtros.
@@ -173,7 +175,7 @@ class UserModel:
         params.extend([limit, offset])
 
         try:
-            result = self.db.execute_query(query, params=params, fetch=True)
+            result = Database.execute_query(query, params=params, fetch=True)
             Logger.info(f"Usuarios obtenidos: {len(result) if result else 0}", "USER_MODEL")
             return result if result else []
         except Exception as e:
@@ -197,7 +199,7 @@ class UserModel:
             params.append(role)
 
         try:
-            result = self.db.execute_query(query, params=params, fetch=True)
+            result = Database.execute_query(query, params=params, fetch=True)
             total = result[0]['total'] if result else 0
             Logger.info(f"Total de usuarios: {total}", "USER_MODEL")
             return total
@@ -211,7 +213,7 @@ class UserModel:
         """
         query = "SELECT COUNT(*) as count FROM usuarios WHERE rol = %s"
         try:
-            result = self.db.execute_query(query, params=(role,), fetch=True)
+            result = Database.execute_query(query, params=(role,), fetch=True)
             count = result[0]['count'] if result else 0
             Logger.info(f"Usuarios con rol '{role}': {count}", "USER_MODEL")
             return count
@@ -219,26 +221,84 @@ class UserModel:
             Logger.error_exception(e, "USER_MODEL")
             return 0
 
+    def get_user_by_id(self, user_id):
+        """Obtiene un usuario por su ID."""
+        query = """
+            SELECT id, usuario as username, nombre, email, rol, estado, ultimo_acceso
+            FROM usuarios
+            WHERE id = %s
+        """
+        try:
+            result = Database.execute_query(query, params=(user_id,), fetch=True)
+            if result:
+                return result[0]
+            return None
+        except Exception as e:
+            Logger.error_exception(e, "USER_MODEL")
+            return None
+
     def create_user(self, nombre, username, email, password, rol):
         """
         Crea un nuevo usuario.
         """
-        # Hashear la contraseña (usa una librería segura en producción)
         import hashlib
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
         query = """
-            INSERT INTO usuarios (usuario, contrasena, nombre, email, rol)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO usuarios (usuario, contrasena, nombre, email, rol, estado)
+            VALUES (%s, %s, %s, %s, %s, 'Activo')
         """
         params = (username, hashed_password, nombre, email, rol)
 
         try:
-            user_id = self.db.execute_query(query, params=params)
+            user_id = Database.execute_query(query, params=params)
             if user_id:
                 Logger.success(f"Usuario '{nombre}' creado con ID {user_id}", "USER_MODEL")
-                return True
+                return user_id
+            return None
+        except Exception as e:
+            Logger.error_exception(e, "USER_MODEL")
+            return None
+
+    def update_user(self, user_id, **kwargs):
+        """Actualiza datos de un usuario."""
+        allowed_fields = ['nombre', 'email', 'rol']
+        updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+        
+        if not updates:
             return False
+        
+        set_clause = ", ".join([f"{k} = %s" for k in updates.keys()])
+        query = f"UPDATE usuarios SET {set_clause} WHERE id = %s"
+        params = list(updates.values()) + [user_id]
+        
+        try:
+            Database.execute_query(query, params=params)
+            Logger.success(f"Usuario {user_id} actualizado", "USER_MODEL")
+            return True
+        except Exception as e:
+            Logger.error_exception(e, "USER_MODEL")
+            return False
+
+    def deactivate_user(self, user_id):
+        """Desactiva un usuario (lo marca como Inactivo)."""
+        query = "UPDATE usuarios SET estado = 'Inactivo' WHERE id = %s"
+        try:
+            Database.execute_query(query, params=(user_id,))
+            Logger.success(f"Usuario {user_id} desactivado", "USER_MODEL")
+            return True
+        except Exception as e:
+            Logger.error_exception(e, "USER_MODEL")
+            return False
+
+    def change_user_status(self, user_id, is_active):
+        """Cambia el estado de un usuario."""
+        status = 'Activo' if is_active else 'Inactivo'
+        query = "UPDATE usuarios SET estado = %s WHERE id = %s"
+        try:
+            Database.execute_query(query, params=(status, user_id))
+            Logger.success(f"Usuario {user_id} estado cambiado a {status}", "USER_MODEL")
+            return True
         except Exception as e:
             Logger.error_exception(e, "USER_MODEL")
             return False

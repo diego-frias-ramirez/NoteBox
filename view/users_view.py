@@ -210,6 +210,17 @@ class UsersView(BaseView):
         self.rows_container = ctk.CTkScrollableFrame(table_frame, fg_color="transparent", height=350)
         self.rows_container.pack(fill="both", expand=True, padx=15, pady=(10, 15))
 
+        # Footer con paginación (inicializar etiqueta de paginación)
+        footer_frame = ctk.CTkFrame(table_frame, fg_color="transparent", height=40)
+        footer_frame.pack(fill="x", padx=15, pady=(0, 15))
+        footer_frame.pack_propagate(False)
+
+        self.pagination_label = ctk.CTkLabel(
+            footer_frame, text="No hay usuarios para mostrar",
+            font=ctk.CTkFont(size=11), text_color="#64748B", anchor="w"
+        )
+        self.pagination_label.pack(side="left")
+
     def update_table(self):
         """Actualiza la tabla con los usuarios cargados."""
         # Limpiar filas anteriores
@@ -241,40 +252,30 @@ class UsersView(BaseView):
         inner_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
         inner_frame.pack(fill="both", expand=True, padx=5, pady=8)
 
-        # Usuario
-        user_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=120)
+        # Usuario (120px)
+        user_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=100)
         user_frame.pack(side="left", padx=8)
         user_frame.pack_propagate(False)
+        ctk.CTkLabel(user_frame, text=user["username"], font=ctk.CTkFont(size=11), text_color="#1E293B", anchor="w").pack(side="left", fill="both", expand=True)
 
-        # Icono de usuario
-        icon_frame = ctk.CTkFrame(user_frame, fg_color="#E0F7FA", width=32, height=32, corner_radius=8)
-        icon_frame.pack(side="left", padx=(0, 10))
-        icon_frame.pack_propagate(False)
-        ctk.CTkLabel(icon_frame, text="👤", font=ctk.CTkFont(size=12)).place(relx=0.5, rely=0.5, anchor="center")
+        # Nombre (180px)
+        nombre_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=180)
+        nombre_frame.pack(side="left", padx=8)
+        nombre_frame.pack_propagate(False)
+        ctk.CTkLabel(nombre_frame, text=user["nombre"], font=ctk.CTkFont(size=11), text_color="#1E293B", anchor="w").pack(side="left", fill="both", expand=True)
 
-        ctk.CTkLabel(
-            user_frame, text=user["username"],
-            font=ctk.CTkFont(size=12), text_color="#1E293B", anchor="w"
-        ).pack(side="left", fill="y")
-
-        # Nombre
-        ctk.CTkLabel(
-            inner_frame, text=user["nombre"],
-            width=180, font=ctk.CTkFont(size=12), text_color="#1E293B", anchor="w"
-        ).pack(side="left", padx=8)
-
-        # Email
-        ctk.CTkLabel(
-            inner_frame, text=user["email"],
-            width=200, font=ctk.CTkFont(size=12), text_color="#1E293B", anchor="w"
-        ).pack(side="left", padx=8)
+        # Email (200px)
+        email_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=200)
+        email_frame.pack(side="left", padx=8)
+        email_frame.pack_propagate(False)
+        ctk.CTkLabel(email_frame, text=user["email"], font=ctk.CTkFont(size=11), text_color="#1E293B", anchor="w").pack(side="left", fill="both", expand=True)
 
         # Rol
         role_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=120)
         role_frame.pack(side="left", padx=8)
         role_frame.pack_propagate(False)
 
-        role_name = user["rol"]
+        role_name = user["rol"].lower() if user["rol"] else "empleado"
         role_colors = {
             "admin": ("#00B4D8", "#FFFFFF"),
             "empleado": ("#E5E7EB", "#1E293B")
@@ -287,6 +288,22 @@ class UsersView(BaseView):
             role_badge, text=role_name.upper(),
             font=ctk.CTkFont(size=10, weight="bold"), text_color=text_color
         ).pack(padx=8, pady=4)
+
+        # Rol (120px)
+        role_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=110)
+        role_frame.pack(side="left", padx=8)
+        role_frame.pack_propagate(False)
+        
+        role_name = user["rol"].lower() if user["rol"] else "empleado"
+        role_colors = {
+            "admin": ("#00B4D8", "#FFFFFF"),
+            "empleado": ("#64748B", "#FFFFFF")
+        }
+        bg_color, text_color = role_colors.get(role_name, ("#64748B", "#FFFFFF"))
+        
+        role_badge = ctk.CTkFrame(role_frame, fg_color=bg_color, corner_radius=6, height=24)
+        role_badge.pack(side="left", expand=False)
+        ctk.CTkLabel(role_badge, text=role_name.upper(), font=ctk.CTkFont(size=9, weight="bold"), text_color=text_color).pack(padx=10, pady=3)
 
         # Estado
         status_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=100)
@@ -307,11 +324,28 @@ class UsersView(BaseView):
             font=ctk.CTkFont(size=10, weight="bold"), text_color=text_color
         ).pack(padx=12, pady=4)
 
-        # Último Acceso
-        ctk.CTkLabel(
-            inner_frame, text=user["ultimo_acceso"].strftime("%Y-%m-%d"),
-            width=150, font=ctk.CTkFont(size=12), text_color="#1E293B", anchor="w"
-        ).pack(side="left", padx=8)
+        # Estado (100px)
+        status_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=100)
+        status_frame.pack(side="left", padx=8)
+        status_frame.pack_propagate(False)
+        
+        status = user["estado"]
+        badge_colors = {
+            "Activo": ("#DCFCE7", "#16A34A"),
+            "Inactivo": ("#FEE2E2", "#DC2626")
+        }
+        bg_color, text_color = badge_colors.get(status, badge_colors["Activo"])
+        
+        badge = ctk.CTkFrame(status_frame, fg_color=bg_color, corner_radius=6, height=24)
+        badge.pack(side="left")
+        ctk.CTkLabel(badge, text=status, font=ctk.CTkFont(size=9, weight="bold"), text_color=text_color).pack(padx=10, pady=3)
+
+        # Último Acceso (150px)
+        ultimo_acceso_text = user["ultimo_acceso"].strftime("%Y-%m-%d") if user["ultimo_acceso"] else "Nunca"
+        ultimo_acceso_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=150)
+        ultimo_acceso_frame.pack(side="left", padx=8)
+        ultimo_acceso_frame.pack_propagate(False)
+        ctk.CTkLabel(ultimo_acceso_frame, text=ultimo_acceso_text, font=ctk.CTkFont(size=11), text_color="#64748B", anchor="w").pack(side="left", fill="both", expand=True)
 
         # Acciones (Editar, Cambiar Estado, Eliminar)
         actions_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=100) # <-- Ancho aumentado a 100
