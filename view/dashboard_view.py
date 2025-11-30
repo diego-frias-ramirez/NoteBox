@@ -95,7 +95,7 @@ class DashboardView(BaseView):
         ).pack(anchor="w", pady=(5, 0))
         
         # Imagen decorativa
-        img_path = os.path.join(self.base_path, "..", "assets", "images", "banner.png")
+        img_path = Helpers.get_asset_path('dashboard_banner', 'assets/images/banner.png')
         try:
             img = Image.open(img_path)
             img = img.resize((509, 113), Image.LANCZOS)

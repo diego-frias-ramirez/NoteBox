@@ -89,6 +89,22 @@ class SettingsController:
             Logger.error(f"Error obteniendo fecha de backup: {e}", "SETTINGS_CONTROLLER")
             return "Error"
 
+    def get_last_backup_timestamp(self):
+        """Devuelve el timestamp (float) del último backup o None si no existe."""
+        try:
+            backups_dir = "exports/backups"
+            if not os.path.exists(backups_dir):
+                return None
+            files = [f for f in os.listdir(backups_dir) if f.endswith('.json') or f.endswith('.sql')]
+            if not files:
+                return None
+            latest = max(files, key=lambda x: os.path.getmtime(os.path.join(backups_dir, x)))
+            timestamp = os.path.getmtime(os.path.join(backups_dir, latest))
+            return timestamp
+        except Exception as e:
+            Logger.error(f"Error obteniendo timestamp de backup: {e}", "SETTINGS_CONTROLLER")
+            return None
+
     def load_app_settings(self):
         """Carga la configuración de la aplicación."""
         try:
@@ -219,48 +235,154 @@ class SettingsController:
             Logger.error(f"Error actualizando backup: {e}", "SETTINGS_CONTROLLER")
             return False, str(e)
 
+    def update_ui_colors(self, colors):
+        """Actualiza colores en la sección `ui.colors` de app_settings.json."""
+        try:
+            app_config = self.load_app_settings()
+            if 'ui' not in app_config:
+                app_config['ui'] = {}
+            if 'colors' not in app_config['ui']:
+                app_config['ui']['colors'] = {}
+
+            app_config['ui']['colors']['primary'] = colors.get('primary', '#00B4D8')
+            app_config['ui']['colors']['secondary'] = colors.get('secondary', '#10B981')
+            app_config['ui']['colors']['sidebar'] = colors.get('sidebar', '#1E293B')
+
+            success, msg = self.save_app_settings(app_config)
+            return success, msg
+        except Exception as e:
+            Logger.error(f"Error actualizando colores UI: {e}", "SETTINGS_CONTROLLER")
+            return False, str(e)
+
     def create_backup(self):
         """Crea un backup manual de la base de datos."""
         try:
             import subprocess
-            
+            import shutil
+
             # Cargar configuración de BD
             db_config = self.load_db_config()
             if not db_config:
                 return False, "No se pudo cargar la configuración de BD"
-            
-            # Crear directorio de backups
-            backups_dir = "exports/backups"
-            os.makedirs(backups_dir, exist_ok=True)
-            
-            # Nombre del archivo de backup
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_file = os.path.join(backups_dir, f"backup_notebox_{timestamp}.sql")
-            
-            # Obtener configuración de la BD
-            env = db_config.get('development', {})
+
+            # Determinar entorno (use 'current_environment' si está presente)
+            env_name = db_config.get('current_environment', 'development')
+            env = db_config.get(env_name, db_config.get('development', {}))
             db_info = env.get('database', {})
-            
+
             host = db_info.get('host', 'localhost')
             user = db_info.get('user', 'root')
             password = db_info.get('password', '')
             database = db_info.get('database', 'notebox_db')
-            
-            # Comando mysqldump
+
+            # Carpeta de backups (intentar usar paths de config si existen)
+            backups_path_cfg = env.get('paths', {}).get('backups') or db_config.get('development', {}).get('paths', {}).get('backups')
+            if backups_path_cfg:
+                # Resolver ruta relativa respecto al directorio de trabajo actual
+                backups_dir = os.path.normpath(os.path.join(os.getcwd(), backups_path_cfg))
+            else:
+                backups_dir = os.path.join(os.getcwd(), 'exports', 'backups')
+
+            os.makedirs(backups_dir, exist_ok=True)
+
+            # Nombre del archivo de backup
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_file = os.path.join(backups_dir, f"backup_notebox_{timestamp}.sql")
+
+            # Verificar que mysqldump esté disponible
+            mysqldump_path = shutil.which('mysqldump')
+            if not mysqldump_path:
+                # Intentar fallback: exportar usando conexión Python (sin mysqldump)
+                try:
+                    conn = Database.get_connection()
+                    with conn.cursor() as cursor:
+                        cursor.execute("SHOW TABLES")
+                        tables = [list(r.values())[0] for r in cursor.fetchall()]
+
+                        with open(backup_file, 'w', encoding='utf-8') as f:
+                            for table in tables:
+                                cursor.execute(f"SHOW CREATE TABLE `{table}`")
+                                create_row = cursor.fetchone()
+                                # obtener la columna CREATE TABLE (nombre puede variar)
+                                create_stmt = None
+                                for v in create_row.values():
+                                    if isinstance(v, str) and v.strip().upper().startswith('CREATE'):
+                                        create_stmt = v
+                                        break
+                                if not create_stmt:
+                                    # fallback: saltar table si no se obtiene create
+                                    continue
+
+                                f.write(f"-- Table: {table}\n")
+                                f.write(f"DROP TABLE IF EXISTS `{table}`;\n")
+                                f.write(create_stmt + ";\n\n")
+
+                                cursor.execute(f"SELECT * FROM `{table}`")
+                                rows = cursor.fetchall()
+                                if rows:
+                                    cols = list(rows[0].keys())
+                                    for r in rows:
+                                        vals = []
+                                        for c in cols:
+                                            v = r.get(c)
+                                            if v is None:
+                                                vals.append('NULL')
+                                            elif isinstance(v, (int, float)):
+                                                vals.append(str(v))
+                                            else:
+                                                escaped = str(v).replace("'", "''")
+                                                vals.append(f"'{escaped}'")
+                                        cols_escaped = ', '.join([f'`{c}`' for c in cols])
+                                        f.write(f"INSERT INTO `{table}` ({cols_escaped}) VALUES ({', '.join(vals)});\n")
+                                f.write('\n')
+
+                    Logger.success(f"Backup creado (fallback SQL): {backup_file}", "SETTINGS_CONTROLLER")
+                    return True, backup_file
+                except Exception as e:
+                    msg = f"mysqldump no disponible y fallback falló: {e}"
+                    Logger.error(msg, "SETTINGS_CONTROLLER")
+                    return False, msg
+
+            # Construir comando como lista y redirigir stdout al archivo
+            cmd = [mysqldump_path, '-h', host, '-u', user]
             if password:
-                cmd = f'mysqldump -h {host} -u {user} -p{password} {database} > "{backup_file}"'
-            else:
-                cmd = f'mysqldump -h {host} -u {user} {database} > "{backup_file}"'
-            
-            # Ejecutar backup
-            result = os.system(cmd)
-            
-            if result == 0 and os.path.exists(backup_file):
-                Logger.success(f"Backup creado: {backup_file}", "SETTINGS_CONTROLLER")
-                return True, backup_file
-            else:
-                return False, "Error al crear el backup"
-                
+                # concatenar -pPASSWORD (mysqldump exige directamente sin espacio)
+                cmd.append(f'-p{password}')
+            cmd.append(database)
+
+            try:
+                with open(backup_file, 'wb') as out_f:
+                    proc = subprocess.run(cmd, stdout=out_f, stderr=subprocess.PIPE)
+
+                if proc.returncode == 0 and os.path.exists(backup_file):
+                    Logger.success(f"Backup creado: {backup_file}", "SETTINGS_CONTROLLER")
+
+                    # Limpiar backups antiguos según retención
+                    try:
+                        app_cfg = self.load_app_settings()
+                        retention = int(app_cfg.get('backup', {}).get('retention_days', 30))
+                        cutoff = datetime.now().timestamp() - (retention * 24 * 60 * 60)
+                        for f in os.listdir(backups_dir):
+                            fp = os.path.join(backups_dir, f)
+                            if os.path.isfile(fp) and os.path.getmtime(fp) < cutoff:
+                                try:
+                                    os.remove(fp)
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
+
+                    return True, backup_file
+                else:
+                    stderr = proc.stderr.decode('utf-8', errors='replace') if proc and hasattr(proc, 'stderr') else ''
+                    msg = f"Error al crear el backup. mysqldump rc={getattr(proc, 'returncode', 'N/A')} stderr={stderr}"
+                    Logger.error(msg, "SETTINGS_CONTROLLER")
+                    return False, msg
+
+            except Exception as e:
+                Logger.error(f"Excepción ejecutando mysqldump: {e}", "SETTINGS_CONTROLLER")
+                return False, str(e)
+
         except Exception as e:
             Logger.error(f"Error creando backup: {e}", "SETTINGS_CONTROLLER")
             return False, str(e)

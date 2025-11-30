@@ -23,7 +23,7 @@ class Header(ctk.CTkFrame):
         self.notification_count = notification_count
         self.base_path = os.path.dirname(os.path.abspath(__file__))
         
-        # Colores
+        # Colores por defecto
         self.colors = {
             "bg": "#FAFAFA",
             "title": "#1E293B",
@@ -33,9 +33,30 @@ class Header(ctk.CTkFrame):
             "border": "#E2E8F0"
         }
         
+        # Cargar colores desde app_settings.json si existen
+        self._load_custom_colors()
+        
         self.notification_icon_img = None
         self.create_header()
     
+    
+    def _load_custom_colors(self):
+        """Carga colores personalizados desde app_settings.json."""
+        try:
+            import json
+            config_path = os.path.join(self.base_path, "..", "config", "app_settings.json")
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    cfg = json.load(f)
+                    ui_colors = cfg.get('ui', {}).get('colors', {})
+                    if ui_colors.get('primary'):
+                        self.colors['bg'] = ui_colors['primary']
+                    if ui_colors.get('secondary'):
+                        self.colors['title'] = ui_colors['secondary']
+                        self.colors['icon'] = ui_colors['secondary']
+        except Exception:
+            pass
+
     def load_notification_icon(self):
         """Carga el ícono de notificaciones desde assets/icons/."""
         icon_path = os.path.join(self.base_path, "..", "assets", "icons", "notifications.png")

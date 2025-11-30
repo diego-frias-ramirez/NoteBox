@@ -220,3 +220,48 @@ class Helpers:
         exports_dir = os.path.join(project_root, "exports", subdir)
         os.makedirs(exports_dir, exist_ok=True)
         return exports_dir
+
+    @staticmethod
+    def get_asset_path(key, default_relative):
+        """
+        Devuelve la ruta absoluta a un asset definido en la configuración.
+        - `key`: clave dentro de `assets` en `app_settings.json`.
+        - `default_relative`: ruta relativa por defecto desde la raíz del proyecto.
+        """
+        try:
+            settings = Helpers._load_settings()
+            rel_path = settings.get('assets', {}).get(key, default_relative)
+        except Exception:
+            rel_path = default_relative
+
+        current_file = os.path.abspath(__file__)
+        project_root = os.path.dirname(os.path.dirname(current_file))
+        abs_path = os.path.join(project_root, rel_path)
+        return abs_path
+
+    @staticmethod
+    def update_asset_setting(key, new_relative_path):
+        """
+        Actualiza la clave `assets.<key>` en `config/app_settings.json` con la ruta relativa proporcionada.
+        Devuelve True si se escribió correctamente, False en caso de error.
+        """
+        current_file = os.path.abspath(__file__)
+        project_root = os.path.dirname(os.path.dirname(current_file))
+        config_path = os.path.join(project_root, 'config', 'app_settings.json')
+
+        try:
+            # Cargar settings existentes
+            with open(config_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+
+            assets = settings.get('assets', {})
+            assets[key] = new_relative_path
+            settings['assets'] = assets
+
+            # Escribir de vuelta
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+
+            return True
+        except Exception:
+            return False

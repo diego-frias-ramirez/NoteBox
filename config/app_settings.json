@@ -23,12 +23,20 @@
     },
     "theme": {
       "default": "light",
-      "available": ["light", "dark"]
+      "available": [
+        "light",
+        "dark"
+      ]
     },
     "language": "es",
     "date_format": "%d/%m/%Y",
     "datetime_format": "%d/%m/%Y %H:%M:%S",
-    "decimal_places": 2
+    "decimal_places": 2,
+    "colors": {
+      "primary": "#0AB7F3",
+      "secondary": "#0AB7F3",
+      "sidebar": "#0AB7F3"
+    }
   },
   "alerts": {
     "stock_bajo_threshold": 10,
@@ -55,8 +63,8 @@
   },
   "backup": {
     "auto_backup": true,
-    "backup_frequency_days": 7,
-    "retention_days": 30,
+    "backup_frequency_days": 1,
+    "retention_days": 1,
     "backup_time": "03:00:00"
   },
   "performance": {
@@ -66,5 +74,11 @@
   "security": {
     "max_login_attempts": 3,
     "lockout_duration_minutes": 15
+  },
+  "assets": {
+    "splash_image": "assets/images/splash_bg.png",
+    "splash_logo": "assets/icons/logo.png",
+    "dashboard_banner": "assets/images/banner.png",
+    "reports_top_product_image": "assets/images/mas_vendio_1.png"
   }
 }

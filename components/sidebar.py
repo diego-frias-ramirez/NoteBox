@@ -20,7 +20,7 @@ class Sidebar(ctk.CTkFrame):
         self.active_page = active_page
         self.base_path = os.path.dirname(os.path.abspath(__file__))
         
-        # Colores
+        # Colores por defecto
         self.colors = {
             "bg": "#FFFFFF",
             "active_bg": "#E8F8F8",
@@ -29,6 +29,9 @@ class Sidebar(ctk.CTkFrame):
             "hover": "#F1F5F9",
             "border": "#E2E8F0"
         }
+        
+        # Cargar colores personalizados desde app_settings.json
+        self._load_custom_colors()
         
         # Menú items con rutas de iconos
         self.menu_items = [
@@ -45,6 +48,23 @@ class Sidebar(ctk.CTkFrame):
         self.icon_images = {} # Diccionario para almacenar los objetos CTkImage de los iconos
         self.create_sidebar()
     
+    
+    def _load_custom_colors(self):
+        """Carga colores personalizados desde app_settings.json."""
+        try:
+            import json
+            config_path = os.path.join(self.base_path, "..", "config", "app_settings.json")
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    cfg = json.load(f)
+                    ui_colors = cfg.get('ui', {}).get('colors', {})
+                    if ui_colors.get('sidebar'):
+                        self.colors['bg'] = ui_colors['sidebar']
+                    if ui_colors.get('secondary'):
+                        self.colors['active_text'] = ui_colors['secondary']
+        except Exception:
+            pass
+
     def load_logo(self):
         """Carga el logo desde assets."""
         logo_path = os.path.join(self.base_path, "..", "assets", "icons", "logo_2.png")

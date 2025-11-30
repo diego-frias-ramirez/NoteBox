@@ -11,6 +11,7 @@ from datetime import datetime
 from components.base_view import BaseView
 from controller.reports_controller import ReportsController
 from utils.logger import Logger
+from utils.helpers import Helpers
 
 class ReportsView(BaseView):
     """Vista del Módulo de Reportes."""
@@ -525,21 +526,21 @@ class ReportsView(BaseView):
         ).pack(expand=True)
         
         # Intentar cargar imagen de productos
-        image_path = os.path.join(self.base_path, "..", "assets", "images", "products_showcase.png")
-        
+        image_path = Helpers.get_asset_path('reports_top_product_image', 'assets/images/products_showcase.png')
+
         try:
             img = Image.open(image_path)
             img = img.resize((300, 300), Image.LANCZOS)
             self.images["products"] = ctk.CTkImage(light_image=img, dark_image=img, size=(300, 300))
-            
+
             ctk.CTkLabel(
                 image_card, image=self.images["products"], text=""
             ).pack(expand=True, pady=20)
-        except:
+        except Exception:
             # Placeholder con emoji si no hay imagen
             placeholder = ctk.CTkFrame(image_card, fg_color="#FFFFFF", corner_radius=15)
             placeholder.pack(fill="both", expand=True, padx=20, pady=20)
-            
+
             ctk.CTkLabel(
                 placeholder, text="🎨\n\nColoca una imagen aquí:\n'assets/images/\nproducts_showcase.png'",
                 font=ctk.CTkFont(size=14), text_color="#94A3B8", justify="center"

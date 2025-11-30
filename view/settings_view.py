@@ -6,11 +6,14 @@ Ubicación: view/settings_view.py
 import customtkinter as ctk
 from PIL import Image
 import os
+import shutil
+from tkinter import filedialog
 from datetime import datetime
 
 from components.base_view import BaseView
 from controller.settings_controller import SettingsController
 from utils.logger import Logger
+from utils.helpers import Helpers
 
 class SettingsView(BaseView):
     """Vista del Módulo de Configuración."""
@@ -67,8 +70,8 @@ class SettingsView(BaseView):
         # 1. INFORMACIÓN DEL NEGOCIO
         self.create_business_info_section(main_scroll)
         
-        # 2. LOGO DEL NEGOCIO
-        self.create_logo_section(main_scroll)
+        # 2. IMÁGENES / ASSETS (splash, banner, reports)
+        self.create_assets_section(main_scroll)
         
         # 3. PERSONALIZACIÓN DE COLORES
         self.create_colors_section(main_scroll)
@@ -225,81 +228,6 @@ class SettingsView(BaseView):
         self.email_entry.insert(0, self.company_settings.get('email_contacto', ''))
         self.email_entry.bind("<KeyRelease>", lambda e: self.mark_unsaved_changes())
 
-    def create_logo_section(self, parent):
-        """Crea la sección de logo del negocio."""
-        section = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
-        section.pack(fill="x", pady=(0, 20))
-        
-        # Header
-        header = ctk.CTkFrame(section, fg_color="transparent")
-        header.pack(fill="x", padx=30, pady=(25, 20))
-        
-        icon_frame = ctk.CTkFrame(header, fg_color="#E0F7FA", width=40, height=40, corner_radius=10)
-        icon_frame.pack(side="left", padx=(0, 12))
-        icon_frame.pack_propagate(False)
-        ctk.CTkLabel(icon_frame, text="🖼️", font=ctk.CTkFont(size=18)).place(relx=0.5, rely=0.5, anchor="center")
-        
-        titles = ctk.CTkFrame(header, fg_color="transparent")
-        titles.pack(side="left")
-        
-        ctk.CTkLabel(
-            titles, text="Logo del Negocio",
-            font=ctk.CTkFont(size=16, weight="bold"), text_color="#1E293B"
-        ).pack(anchor="w")
-        
-        ctk.CTkLabel(
-            titles, text="Personalice la imagen de su empresa",
-            font=ctk.CTkFont(size=12), text_color="#64748B"
-        ).pack(anchor="w")
-        
-        # Contenedor del logo
-        logo_container = ctk.CTkFrame(section, fg_color="transparent")
-        logo_container.pack(fill="x", padx=30, pady=(0, 25))
-        
-        logo_row = ctk.CTkFrame(logo_container, fg_color="transparent")
-        logo_row.pack(fill="x")
-        
-        # Logo actual (izquierda)
-        current_logo_frame = ctk.CTkFrame(logo_row, fg_color="#F8FAFC", width=140, height=140, corner_radius=12, border_width=2, border_color="#E2E8F0")
-        current_logo_frame.pack(side="left", padx=(0, 20))
-        current_logo_frame.pack_propagate(False)
-        
-        ctk.CTkLabel(
-            current_logo_frame, text="🖼️", font=ctk.CTkFont(size=40), text_color="#94A3B8"
-        ).place(relx=0.5, rely=0.4, anchor="center")
-        
-        ctk.CTkLabel(
-            current_logo_frame, text="Logo actual",
-            font=ctk.CTkFont(size=11), text_color="#64748B"
-        ).place(relx=0.5, rely=0.7, anchor="center")
-        
-        # Área de carga (derecha)
-        upload_frame = ctk.CTkFrame(logo_row, fg_color="#F8FAFC", corner_radius=12, border_width=2, border_color="#E2E8F0")
-        upload_frame.pack(side="left", fill="both", expand=True)
-        
-        upload_inner = ctk.CTkFrame(upload_frame, fg_color="transparent")
-        upload_inner.pack(expand=True, pady=30)
-        
-        ctk.CTkLabel(
-            upload_inner, text="⬆️",
-            font=ctk.CTkFont(size=32), text_color="#00B4D8"
-        ).pack()
-        
-        ctk.CTkLabel(
-            upload_inner, text="Haga clic para subir o arrastre su logo",
-            font=ctk.CTkFont(size=13, weight="bold"), text_color="#1E293B"
-        ).pack(pady=(10, 3))
-        
-        ctk.CTkLabel(
-            upload_inner, text="PNG, JPG hasta 2MB",
-            font=ctk.CTkFont(size=11), text_color="#94A3B8"
-        ).pack()
-        
-        ctk.CTkLabel(
-            logo_container, text="Recomendado: 200x200px, fondo transparente",
-            font=ctk.CTkFont(size=11), text_color="#94A3B8"
-        ).pack(anchor="center", pady=(15, 0))
-
     def create_colors_section(self, parent):
         """Crea la sección de personalización de colores."""
         section = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
@@ -346,10 +274,12 @@ class SettingsView(BaseView):
         self.primary_color_entry = ctk.CTkEntry(
             primary_container, height=45, font=ctk.CTkFont(size=13),
             fg_color="#F8FAFC", border_color="#E2E8F0", border_width=1,
-            corner_radius=8, placeholder_text="#00B4D8"
+            corner_radius=8, placeholder_text="#0960ae"
         )
         self.primary_color_entry.pack(fill="x")
-        self.primary_color_entry.insert(0, self.company_settings.get('color_primario', '#00B4D8'))
+        app_cfg = self.controller.load_app_settings()
+        primary_color = app_cfg.get('ui', {}).get('colors', {}).get('primary', '#0960ae')
+        self.primary_color_entry.insert(0, primary_color)
         self.primary_color_entry.bind("<KeyRelease>", lambda e: self.mark_unsaved_changes())
         
         # Color Secundario
@@ -364,10 +294,12 @@ class SettingsView(BaseView):
         self.secondary_color_entry = ctk.CTkEntry(
             secondary_container, height=45, font=ctk.CTkFont(size=13),
             fg_color="#F8FAFC", border_color="#E2E8F0", border_width=1,
-            corner_radius=8, placeholder_text="#10B981"
+            corner_radius=8, placeholder_text="#0960ae"
         )
         self.secondary_color_entry.pack(fill="x")
-        self.secondary_color_entry.insert(0, self.company_settings.get('color_secundario', '#10B981'))
+        app_cfg = self.controller.load_app_settings()
+        secondary_color = app_cfg.get('ui', {}).get('colors', {}).get('secondary', '#0960ae')
+        self.secondary_color_entry.insert(0, secondary_color)
         self.secondary_color_entry.bind("<KeyRelease>", lambda e: self.mark_unsaved_changes())
         
         # Color Sidebar
@@ -382,15 +314,17 @@ class SettingsView(BaseView):
         self.sidebar_color_entry = ctk.CTkEntry(
             sidebar_container, height=45, font=ctk.CTkFont(size=13),
             fg_color="#F8FAFC", border_color="#E2E8F0", border_width=1,
-            corner_radius=8, placeholder_text="#1E293B"
+            corner_radius=8, placeholder_text="#0960ae"
         )
         self.sidebar_color_entry.pack(fill="x")
-        self.sidebar_color_entry.insert(0, "#1E293B")
+        app_cfg = self.controller.load_app_settings()
+        sidebar_color = app_cfg.get('ui', {}).get('colors', {}).get('sidebar', '#0960ae')
+        self.sidebar_color_entry.insert(0, sidebar_color)
         self.sidebar_color_entry.bind("<KeyRelease>", lambda e: self.mark_unsaved_changes())
         
         # Preview de colores
         ctk.CTkLabel(
-            colors_container, text="Vista previa de los colores aplicados al tema de la aplicación",
+            colors_container, text="Reiniciar para mostara los colores aplicados al tema de la aplicación",
             font=ctk.CTkFont(size=11), text_color="#94A3B8"
         ).pack(anchor="w", pady=(15, 0))
         
@@ -490,6 +424,200 @@ class SettingsView(BaseView):
         )
         backup_btn.pack(anchor="w", pady=(15, 0))
 
+        # Frecuencia y retención
+        freq_row = ctk.CTkFrame(content, fg_color="transparent")
+        freq_row.pack(fill="x", pady=(12, 0))
+
+        freq_container = ctk.CTkFrame(freq_row, fg_color="transparent")
+        freq_container.pack(side="left", fill="both", expand=True)
+        ctk.CTkLabel(freq_container, text="Frecuencia (días)", font=ctk.CTkFont(size=12), text_color="#64748B").pack(anchor="w")
+        self.backup_freq_entry = ctk.CTkEntry(freq_container, height=36, width=120)
+        self.backup_freq_entry.pack(anchor="w", pady=(6, 0))
+        self.backup_freq_entry.insert(0, str(self.backup_settings.get('backup_frequency_days', 7)))
+
+        retention_container = ctk.CTkFrame(freq_row, fg_color="transparent")
+        retention_container.pack(side="right", fill="both", expand=True)
+        ctk.CTkLabel(retention_container, text="Retención (días)", font=ctk.CTkFont(size=12), text_color="#64748B").pack(anchor="w")
+        self.backup_retention_entry = ctk.CTkEntry(retention_container, height=36, width=120)
+        self.backup_retention_entry.pack(anchor="w", pady=(6, 0))
+        self.backup_retention_entry.insert(0, str(self.backup_settings.get('retention_days', 30)))
+
+    def create_assets_section(self, parent):
+        """Sección para gestionar imágenes/configuración de assets (splash, banner, reports)."""
+        section = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
+        section.pack(fill="x", pady=(0, 20))
+
+        # Header
+        header = ctk.CTkFrame(section, fg_color="transparent")
+        header.pack(fill="x", padx=30, pady=(25, 20))
+
+        icon_frame = ctk.CTkFrame(header, fg_color="#E0F7FA", width=40, height=40, corner_radius=10)
+        icon_frame.pack(side="left", padx=(0, 12))
+        icon_frame.pack_propagate(False)
+        ctk.CTkLabel(icon_frame, text="🖼️", font=ctk.CTkFont(size=18)).place(relx=0.5, rely=0.5, anchor="center")
+
+        titles = ctk.CTkFrame(header, fg_color="transparent")
+        titles.pack(side="left")
+
+        ctk.CTkLabel(
+            titles, text="Recursos / Imágenes",
+            font=ctk.CTkFont(size=16, weight="bold"), text_color="#1E293B"
+        ).pack(anchor="w")
+
+        ctk.CTkLabel(
+            titles, text="Configure imágenes usadas en splash, dashboard y reportes",
+            font=ctk.CTkFont(size=12), text_color="#64748B"
+        ).pack(anchor="w")
+
+        # Content
+        content = ctk.CTkFrame(section, fg_color="transparent")
+        content.pack(fill="x", padx=30, pady=(0, 25))
+
+        # Assets to manage: key -> (label, default_relative, dest_folder)
+        assets = {
+            'splash_image': ("Imagen Splash (fondo)", 'assets/images/splash_bg.png', 'images'),
+            'splash_logo': ("Logo Splash", 'assets/icons/logo.png', 'icons'),
+            'dashboard_banner': ("Banner Dashboard", 'assets/images/banner.png', 'images'),
+            'reports_top_product_image': ("Imagen - Más Vendido (Reportes)", 'assets/images/products_showcase.png', 'images')
+        }
+
+        for key, (label_text, default_rel, dest_folder) in assets.items():
+            self._create_asset_row(content, key, label_text, default_rel, dest_folder)
+
+    def _create_asset_row(self, parent, key, label_text, default_rel, dest_folder):
+        """Crea una fila para un asset con preview, ruta y botones."""
+        row = ctk.CTkFrame(parent, fg_color="transparent")
+        row.pack(fill="x", pady=(8, 8))
+
+        # Preview
+        preview_frame = ctk.CTkFrame(row, fg_color="#F8FAFC", width=90, height=90, corner_radius=10)
+        preview_frame.pack(side="left", padx=(0, 12))
+        preview_frame.pack_propagate(False)
+
+        preview_label = ctk.CTkLabel(preview_frame, text="🖼️", font=ctk.CTkFont(size=28), text_color="#94A3B8")
+        preview_label.place(relx=0.5, rely=0.5, anchor="center")
+
+        # Info + path
+        info = ctk.CTkFrame(row, fg_color="transparent")
+        info.pack(side="left", fill="x", expand=True)
+
+        ctk.CTkLabel(info, text=label_text, font=ctk.CTkFont(size=12, weight="bold"), text_color="#374151").pack(anchor="w")
+
+        path_label = ctk.CTkLabel(info, text="(ruta no disponible)", font=ctk.CTkFont(size=11), text_color="#64748B")
+        path_label.pack(anchor="w", pady=(6, 0))
+
+        # Buttons
+        btns = ctk.CTkFrame(row, fg_color="transparent")
+        btns.pack(side="right")
+
+        change_btn = ctk.CTkButton(btns, text="Cambiar", width=110, height=34, fg_color="#00B4D8",
+                                   corner_radius=8, command=lambda k=key, d=dest_folder, pr=path_label, pv=preview_label, dr=default_rel: self.choose_asset_file(k, d, pr, pv, dr))
+        change_btn.pack(side="right", padx=(8, 0))
+
+        reset_btn = ctk.CTkButton(btns, text="Restaurar", width=110, height=34, fg_color="transparent",
+                                  text_color="#64748B", border_width=1, border_color="#E2E8F0",
+                                  corner_radius=8, command=lambda k=key, pr=path_label, pv=preview_label, dr=default_rel: self.restore_asset_default(k, pr, pv, dr))
+        reset_btn.pack(side="right")
+
+        # Initialize preview/path
+        try:
+            asset_path = Helpers.get_asset_path(key, default_rel)
+            if os.path.exists(asset_path):
+                path_label.configure(text=os.path.relpath(asset_path, os.path.dirname(self.base_path)))
+                # try to load preview
+                try:
+                    img = Image.open(asset_path)
+                    img = img.resize((80, 80), Image.LANCZOS)
+                    self.images[key] = ctk.CTkImage(light_image=img, dark_image=img, size=(80, 80))
+                    preview_label.configure(image=self.images[key], text="")
+                except Exception:
+                    preview_label.configure(text="🖼️")
+            else:
+                path_label.configure(text="(archivo no encontrado)")
+        except Exception:
+            path_label.configure(text="(error cargando ruta)")
+
+    def choose_asset_file(self, key, dest_folder, path_label, preview_label, default_rel):
+        """Abre un file dialog para seleccionar la nueva imagen y la copia a assets."""
+        filetypes = [("Images", "*.png *.jpg *.jpeg *.gif *.bmp"), ("All files", "*")]
+        selected = filedialog.askopenfilename(title="Seleccionar imagen", filetypes=filetypes)
+        if not selected:
+            return
+
+        try:
+            # Validar tamaño (2MB recomendado)
+            max_bytes = 2 * 1024 * 1024
+            if os.path.getsize(selected) > max_bytes:
+                self.show_message("El archivo excede 2MB. Elija uno más pequeño.", "warning")
+                return
+
+            # Copiar al folder correspondiente en assets
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            assets_dir = os.path.join(project_root, 'assets', dest_folder)
+            os.makedirs(assets_dir, exist_ok=True)
+
+            filename = Helpers.sanitize_filename(os.path.basename(selected))
+            dest_path = os.path.join(assets_dir, filename)
+
+            # Evitar sobreescribir: si existe, usar sufijo
+            base, ext = os.path.splitext(filename)
+            counter = 1
+            while os.path.exists(dest_path):
+                dest_path = os.path.join(assets_dir, f"{base}_{counter}{ext}")
+                counter += 1
+
+            shutil.copy2(selected, dest_path)
+
+            # Guardar ruta relativa en configuración
+            rel = os.path.relpath(dest_path, project_root).replace('\\', '/')
+            ok = Helpers.update_asset_setting(key, rel)
+            if not ok:
+                self.show_message("No se pudo actualizar la configuración.", "error")
+                return
+
+            # Actualizar vista
+            path_label.configure(text=rel)
+            try:
+                img = Image.open(dest_path)
+                img = img.resize((80, 80), Image.LANCZOS)
+                self.images[key] = ctk.CTkImage(light_image=img, dark_image=img, size=(80, 80))
+                preview_label.configure(image=self.images[key], text="")
+            except Exception:
+                preview_label.configure(text="🖼️")
+
+            self.show_message("Imagen actualizada correctamente", "success")
+
+        except Exception as e:
+            Logger.error(f"Error al actualizar asset {key}: {e}", "SETTINGS_VIEW")
+            self.show_message(f"Error: {str(e)}", "error")
+
+    def restore_asset_default(self, key, path_label, preview_label, default_rel):
+        """Restaura la ruta del asset a la ruta por defecto en config."""
+        try:
+            ok = Helpers.update_asset_setting(key, default_rel)
+            if ok:
+                asset_path = Helpers.get_asset_path(key, default_rel)
+                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.exists(asset_path):
+                    rel = os.path.relpath(asset_path, project_root).replace('\\', '/')
+                    path_label.configure(text=rel)
+                    try:
+                        img = Image.open(asset_path)
+                        img = img.resize((80, 80), Image.LANCZOS)
+                        self.images[key] = ctk.CTkImage(light_image=img, dark_image=img, size=(80, 80))
+                        preview_label.configure(image=self.images[key], text="")
+                    except Exception:
+                        preview_label.configure(text="🖼️")
+                else:
+                    path_label.configure(text="(archivo por defecto no encontrado)")
+
+                self.show_message("Ruta restaurada a la configuración por defecto", "success")
+            else:
+                self.show_message("No se pudo actualizar la configuración", "error")
+        except Exception as e:
+            Logger.error(f"Error al restaurar asset {key}: {e}", "SETTINGS_VIEW")
+            self.show_message(f"Error: {str(e)}", "error")
+
     def create_system_info_section(self, parent):
         """Crea la sección de información del sistema."""
         section = ctk.CTkFrame(parent, fg_color="#00B4D8", corner_radius=15)
@@ -565,7 +693,7 @@ class SettingsView(BaseView):
     def save_all_settings(self):
         """Guarda todos los cambios de configuración."""
         try:
-            # Recopilar datos
+            # Recopilar datos de empresa
             company_data = {
                 'nombre_negocio': self.business_name_entry.get().strip(),
                 'tipo_negocio': self.business_type_entry.get().strip(),
@@ -580,16 +708,43 @@ class SettingsView(BaseView):
                 return
             
             # Guardar configuración de empresa
-            success, message = self.controller.update_company_settings(company_data)
+            success_company, msg_company = self.controller.update_company_settings(company_data)
             
-            if success:
+            # Guardar colores UI en app_settings.json
+            colors = {
+                'primary': self.primary_color_entry.get().strip() or "#00B4D8",
+                'secondary': self.secondary_color_entry.get().strip() or "#10B981",
+                'sidebar': self.sidebar_color_entry.get().strip() or "#1E293B"
+            }
+            success_colors, msg_colors = self.controller.update_ui_colors(colors)
+
+            # Guardar configuración de backup
+            backup_data = {
+                'auto_backup': bool(self.backup_switch.get()),
+                'backup_frequency_days': int(self.backup_freq_entry.get().strip() or 7),
+                'retention_days': int(self.backup_retention_entry.get().strip() or 30)
+            }
+            success_backup, msg_backup = self.controller.update_backup_settings(backup_data)
+
+            # Determinar resultado general
+            all_ok = success_company and success_colors and success_backup
+            
+            if all_ok:
                 self.has_unsaved_changes = False
-                Logger.success("Configuración guardada", "SETTINGS_VIEW")
-                self.show_message("✅ Configuración guardada correctamente", "success")
-                
-                # Recargar datos
+                Logger.success("Toda la configuración guardada correctamente", "SETTINGS_VIEW")
+                self.show_message("✅ Configuración guardada\n\nLos colores se aplicarán al reiniciar la app", "success")
                 self.load_data()
-            else: self.show_message(f"❌ Error: {message}", "error")
+            else:
+                error_parts = []
+                if not success_company:
+                    error_parts.append("empresa")
+                if not success_colors:
+                    error_parts.append("colores")
+                if not success_backup:
+                    error_parts.append("backup")
+                
+                error_msg = ", ".join(error_parts)
+                self.show_message(f"⚠️ Error guardando: {error_msg}", "warning")
             
         except Exception as e:
             Logger.error(f"Error guardando configuración: {e}", "SETTINGS_VIEW")

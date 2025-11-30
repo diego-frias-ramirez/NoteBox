@@ -6,6 +6,7 @@ import tkinter as tk
 from PIL import Image, ImageTk, ImageDraw
 import os
 from controller.splash_controller import SplashScreenController
+from utils.helpers import Helpers
 
 class NoteBoxSplash:
     """Vista del Splash Screen."""
@@ -50,7 +51,7 @@ class NoteBoxSplash:
         return img_rounded
     
     def load_images(self):
-        bg_path = os.path.join(self.base_path, "..", "assets", "images", "splash_bg.png")
+        bg_path = Helpers.get_asset_path('splash_image', 'assets/images/splash_bg.png')
         try:
             img = Image.open(bg_path)
             img = img.resize((500, 280), Image.LANCZOS)
@@ -60,7 +61,7 @@ class NoteBoxSplash:
         except:
             self.bg_image = None
         
-        logo_path = os.path.join(self.base_path, "..", "assets", "icons", "logo.png")
+        logo_path = Helpers.get_asset_path('splash_logo', 'assets/icons/logo.png')
         try:
             logo = Image.open(logo_path)
             logo = logo.resize((50, 50), Image.LANCZOS)
