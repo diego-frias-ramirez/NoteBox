@@ -61,7 +61,8 @@ class SettingsView(BaseView):
             scrollbar_button_color="#CBD5E1",
             scrollbar_button_hover_color="#94A3B8"
         )
-        main_scroll.pack(fill="both", expand=True)
+        main_scroll.pack(fill="both", expand=True, padx=15, pady=15)
+        main_scroll.configure(height=650)
         
         # 1. INFORMACIÓN DEL NEGOCIO
         self.create_business_info_section(main_scroll)
