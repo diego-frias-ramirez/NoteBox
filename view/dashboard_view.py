@@ -367,8 +367,8 @@ class DashboardView(BaseView):
             from view.users_view import UsersView
             UsersView(self.user_data).run()
         elif page_id == "configuracion":
-            from view.settings_view import ConfiguracionView
-            ConfiguracionView(self.user_data).run()
+            from view.settings_view import SettingsView
+            SettingsView(self.user_data).run()
         elif page_id == "ayuda":
             from view.help_view import HelpView
             HelpView(self.user_data).run()
