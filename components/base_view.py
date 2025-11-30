@@ -15,26 +15,32 @@ class BaseView(ctk.CTk):
     """Clase base para todas las vistas con sidebar y header."""
     
     def __init__(self, user_data, page_id="dashboard", page_title="Dashboard", 
-                 page_subtitle="Bienvenido al sistema de gestión"):
-        super().__init__()
+             page_subtitle="Bienvenido al sistema de gestión"):
+     super().__init__()
+    
+     self.user_data = user_data
+     self.page_id = page_id
+     self.page_title = page_title
+     self.page_subtitle = page_subtitle
+     self.base_path = os.path.dirname(os.path.abspath(__file__))
+    
+    # Configuración de ventana
+     self.title(f"NoteBox - {page_title}")
+     self.state('zoomed')  # Primera llamada al maximizar
+     self.minsize(1024, 600)
+     self.configure(fg_color="#F8FAFC")
+    
+    # Crear layout
+     self.create_layout()
+    
+    # ========= FORZAR MAXIMIZADO MÚLTIPLES VECES #ESTO ES PARA LAS VENTANAS NO APAREZCAN MAS CHICAS ========= 
+     self.update_idletasks()
+     self.state('zoomed')  # Segunda llamada
+     self.after(10, lambda: self.state('zoomed'))  # Tercera llamada
+     self.after(50, lambda: self.state('zoomed'))  # Cuarta llamada
+     self.after(150, lambda: self.state('zoomed'))  # Quinta llamada
+    # =====================================================
         
-        self.user_data = user_data
-        self.page_id = page_id
-        self.page_title = page_title
-        self.page_subtitle = page_subtitle
-        self.base_path = os.path.dirname(os.path.abspath(__file__))
-        
-        # Configuración de ventana
-        self.title(f"NoteBox - {page_title}")
-        self.geometry("1280x720")
-        self.minsize(1024, 600)
-        self.configure(fg_color="#F8FAFC")
-        
-        # Centrar ventana
-        self.center_window()
-        
-        # Crear layout
-        self.create_layout()
     
     def center_window(self):
         self.update_idletasks()
@@ -89,31 +95,42 @@ class BaseView(ctk.CTk):
         pass
     
     def navigate_to(self, page_id):
-        """Navega a otra página."""
-        self.destroy()
-        
-        # Importar y abrir la vista correspondiente (USANDO LOS NOMBRES REALES DE TUS ARCHIVOS)
-        if page_id == "dashboard":
-            from view.dashboard_view import DashboardView
-            DashboardView(self.user_data).run()
-        elif page_id == "inventario":
-            from view.inventory_view import InventoryView  # Clase debe coincidir con el archivo
-            InventoryView(self.user_data).run()
-        elif page_id == "movimientos":
-            from view.movements_view import MovementsView
-            MovementsView(self.user_data).run()
-        elif page_id == "reportes":
-            from view.reports_view import ReportsView
-            ReportsView(self.user_data).run()
-        elif page_id == "usuarios":
-            from view.users_view import UsersView
-            UsersView(self.user_data).run()
-        elif page_id == "configuracion":
-            from view.settings_view import SettingsView
-            SettingsView(self.user_data).run()
-        elif page_id == "ayuda":
-            from view.help_view import HelpView
-            HelpView(self.user_data).run()
+     """Navega a otra página manteniendo maximizado."""
+     # Guardar user_data ANTES de destruir
+     user_data = self.user_data
+    
+     self.destroy()
+    
+     # Crear nueva vista
+     if page_id == "dashboard":
+        from view.dashboard_view import DashboardView
+        new_view = DashboardView(user_data)
+     elif page_id == "inventario":
+        from view.inventory_view import InventoryView
+        new_view = InventoryView(user_data)
+     elif page_id == "movimientos":
+        from view.movements_view import MovementsView
+        new_view = MovementsView(user_data)
+     elif page_id == "reportes":
+        from view.reports_view import ReportsView
+        new_view = ReportsView(user_data)
+     elif page_id == "usuarios":
+        from view.users_view import UsersView
+        new_view = UsersView(user_data)
+      
+     elif page_id == "configuracion":
+        from view.settings_view import SettingsView
+        new_view = SettingsView(user_data)
+     elif page_id == "ayuda":
+        from view.help_view import HelpView
+        new_view = HelpView(user_data)
+     else:
+        return
+    
+    # Forzar maximizado antes de run()
+     new_view.update()
+     new_view.state('zoomed')
+     new_view.run()
     
     def logout(self):
         """Cierra sesión y vuelve al login."""
