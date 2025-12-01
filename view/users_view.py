@@ -895,39 +895,59 @@ class UsersView(BaseView):
 
     def toggle_user_status(self, user):
         """Cambia el estado de un usuario (Activo/Inactivo)."""
-        new_status = "Inactivo" if user["estado"] == "Activo" else "Activo"
-        confirmed = messagebox.askyesno(
-            "Confirmar Cambio de Estado",
-            f"¿Está seguro de cambiar el estado del usuario '{user['nombre']}' a {new_status}?\n\nEsta acción puede afectar su acceso al sistema."
-        )
-        if confirmed:
-            success, message = self.controller.change_user_status(user['id'], new_status == "Activo")
-            if success:
-                Logger.success(f"Estado del usuario {user['id']} cambiado a {new_status}", "USERS_VIEW")
-                # Refrescar la lista de usuarios
-                self.load_users()
-                # Mostrar mensaje de éxito
-                self.show_message(f"Estado del usuario '{user['nombre']}' actualizado a {new_status}.", "success")
-            else:
-                Logger.error(f"Error al cambiar estado del usuario {user['id']}: {message}", "USERS_VIEW")
-                self.show_message(f"Error al cambiar estado: {message}", "error")
+        try:
+            new_status = "Inactivo" if user["estado"] == "Activo" else "Activo"
+            confirmed = messagebox.askyesno(
+                "Confirmar Cambio de Estado",
+                f"¿Está seguro de cambiar el estado del usuario '{user['nombre']}' a {new_status}?\n\nEsta acción puede afectar su acceso al sistema."
+            )
+            if confirmed:
+                success, message = self.controller.change_user_status(user['id'], new_status == "Activo")
+                if success:
+                    Logger.success(f"Estado del usuario {user['id']} cambiado a {new_status}", "USERS_VIEW")
+                    # Refrescar la lista de usuarios
+                    self.load_users()
+                    # Mostrar mensaje de éxito
+                    self.show_message(f"Estado del usuario '{user['nombre']}' actualizado a {new_status}.", "success")
+                else:
+                    Logger.error(f"Error al cambiar estado del usuario {user['id']}: {message}", "USERS_VIEW")
+                    self.show_message(f"Error al cambiar estado: {message}", "error")
+        except Exception as e:
+            Logger.log_error_exception(e, "USERS_VIEW")
+            self.show_message(f"Error inesperado al cambiar estado: {str(e)}", "error")
 
     def delete_user(self, user):
         """Acción para eliminar un usuario."""
-        from tkinter import messagebox
-        confirmed = messagebox.askyesno(
-            "Confirmar Eliminación",
-            f"¿Está seguro de eliminar el usuario '{user['nombre']}'?\n\nEsta acción no se puede deshacer."
-        )
-        if confirmed:
-            success, message = self.controller.delete_user(user['id'])
-            if success:
-                Logger.success(f"Usuario {user['id']} eliminado", "USERS_VIEW")
-                # Refrescar la lista de usuarios
-                self.load_users()
-                # Mostrar mensaje de éxito
-                self.show_message("Usuario eliminado correctamente", "success")
-            else:
-                Logger.error(f"Error al eliminar usuario {user['id']}: {message}", "USERS_VIEW")
-                self.show_message(f"Error al eliminar: {message}", "error")
+        try:
+            # Validar que user tiene los datos necesarios
+            if not user or 'id' not in user or 'nombre' not in user:
+                self.show_message("Error: Datos del usuario inválidos", "error")
+                return
+            
+            confirmed = messagebox.askyesno(
+                "Confirmar Eliminación",
+                f"¿Está seguro de eliminar el usuario '{user['nombre']}'?\n\nEsta acción no se puede deshacer."
+            )
+            
+            if confirmed:
+                print(f"[DEBUG] Eliminando usuario ID: {user['id']}, nombre: {user['nombre']}")
+                success, message = self.controller.delete_user(user['id'])
+                print(f"[DEBUG] Resultado: success={success}, message={message}")
+                
+                if success:
+                    Logger.success(f"Usuario {user['id']} eliminado", "USERS_VIEW")
+                    # Refrescar lista de usuarios
+                    self.load_users()
+                    # Refrescar resumen de usuarios
+                    summary = self.controller.get_users_summary()
+                    self.update_summary_cards(summary)
+                    # Mostrar mensaje de éxito
+                    self.show_message("Usuario eliminado correctamente", "success")
+                else:
+                    Logger.error(f"Error al eliminar usuario {user['id']}: {message}", "USERS_VIEW")
+                    self.show_message(f"Error al eliminar: {message}", "error")
+        except Exception as e:
+            print(f"[DEBUG] Exception en delete_user: {e}")
+            Logger.log_error_exception(e, "USERS_VIEW")
+            self.show_message(f"Error inesperado al eliminar: {str(e)}", "error")
 
