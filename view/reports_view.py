@@ -117,27 +117,49 @@ class ReportsView(BaseView):
         
         date_inputs = ctk.CTkFrame(filters_frame, fg_color="transparent")
         date_inputs.pack()
-        
+
+        # Start date with calendar icon
+        start_container = ctk.CTkFrame(date_inputs, fg_color="transparent")
+        start_container.pack(side="left", padx=(0, 8))
+
         self.start_date_entry = ctk.CTkEntry(
-            date_inputs, placeholder_text="📅 Fecha inicio",
-            width=150, height=38, font=ctk.CTkFont(size=12),
+            start_container, placeholder_text="📅 Fecha inicio",
+            width=120, height=38, font=ctk.CTkFont(size=12),
             fg_color="#F8FAFC", border_color="#E2E8F0", border_width=1,
             corner_radius=8
         )
-        self.start_date_entry.pack(side="left", padx=(0, 8))
-        
+        self.start_date_entry.pack(side="left")
+
+        ctk.CTkButton(
+            start_container, text="📅", width=38, height=38,
+            fg_color="transparent", text_color="#475569",
+            hover_color="#F1F5F9", corner_radius=8,
+            command=lambda: self.open_calendar_for(self.start_date_entry)
+        ).pack(side="left", padx=(6, 0))
+
         ctk.CTkLabel(
-            date_inputs, text="—", 
+            date_inputs, text="—",
             font=ctk.CTkFont(size=14), text_color="#94A3B8"
-        ).pack(side="left", padx=3)
-        
+        ).pack(side="left", padx=6)
+
+        # End date with calendar icon
+        end_container = ctk.CTkFrame(date_inputs, fg_color="transparent")
+        end_container.pack(side="left", padx=(8, 0))
+
         self.end_date_entry = ctk.CTkEntry(
-            date_inputs, placeholder_text="📅 Fecha fin",
-            width=150, height=38, font=ctk.CTkFont(size=12),
+            end_container, placeholder_text="📅 Fecha fin",
+            width=120, height=38, font=ctk.CTkFont(size=12),
             fg_color="#F8FAFC", border_color="#E2E8F0", border_width=1,
             corner_radius=8
         )
-        self.end_date_entry.pack(side="left", padx=(8, 0))
+        self.end_date_entry.pack(side="left")
+
+        ctk.CTkButton(
+            end_container, text="📅", width=38, height=38,
+            fg_color="transparent", text_color="#475569",
+            hover_color="#F1F5F9", corner_radius=8,
+            command=lambda: self.open_calendar_for(self.end_date_entry)
+        ).pack(side="left", padx=(6, 0))
         
         # Botones de exportación (derecha)
         buttons_frame = ctk.CTkFrame(inner, fg_color="transparent")
@@ -160,6 +182,220 @@ class ReportsView(BaseView):
             command=lambda: self.export_report("excel")
         )
         excel_btn.pack(side="left")
+
+
+    def open_calendar_for(self, entry_widget):
+        """Abre un calendario visual y coloca la fecha seleccionada en el campo dado."""
+        try:
+            from tkcalendar import Calendar  # type: ignore
+            has_tkcalendar = True
+        except Exception:
+            has_tkcalendar = False
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Seleccionar fecha")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.configure(fg_color="#FFFFFF")
+
+        dialog.update_idletasks()
+        w, h = 320, 320
+        x = self.winfo_x() + (self.winfo_width() // 2) - (w // 2)
+        y = self.winfo_y() + (self.winfo_height() // 2) - (h // 2)
+        dialog.geometry(f"{w}x{h}+{x}+{y}")
+
+        inner = ctk.CTkFrame(dialog, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=20, pady=18)
+
+        ctk.CTkLabel(inner, text="Seleccione una fecha:", font=ctk.CTkFont(size=13, weight="bold"), text_color="#1E293B").pack(anchor="w", pady=(0, 10))
+
+        if has_tkcalendar:
+            cal = Calendar(inner, date_pattern='dd/MM/yyyy', selectmode='day')
+            cal.pack(pady=10)
+        else:
+            cal = None
+            ctk.CTkLabel(inner, text="(Para un selector visual instala 'tkcalendar')", font=ctk.CTkFont(size=10), text_color="#94A3B8").pack(anchor="w", pady=(8, 0))
+
+        def on_select():
+            if cal:
+                date_str = cal.get_date()
+            else:
+                date_str = datetime.now().strftime('%d/%m/%Y')
+            entry_widget.delete(0, "end")
+            entry_widget.insert(0, date_str)
+            dialog.destroy()
+
+        ctk.CTkButton(inner, text="Seleccionar", width=120, command=on_select, fg_color="#0EA5A4", text_color="#FFFFFF").pack(pady=(18, 0))
+        ctk.CTkButton(inner, text="Cancelar", width=120, command=dialog.destroy, fg_color="#F1F5F9", text_color="#475569").pack(pady=(8, 0))
+
+    def show_date_picker_dialog(self, format_type):
+        """Muestra un diálogo (agenda) para seleccionar fecha inicio/fin.
+
+        Usa `tkcalendar.DateEntry` si está disponible. Si no, muestra
+        campos `CTkEntry` para que el usuario ingrese manualmente.
+        """
+        try:
+            from tkcalendar import DateEntry  # type: ignore
+            has_tkcalendar = True
+        except Exception:
+            has_tkcalendar = False
+
+        dialog = ctk.CTkToplevel(self)
+        dialog.title("Seleccionar rango de fechas")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.configure(fg_color="#FFFFFF")
+
+        dialog.update_idletasks()
+        w, h = 420, 220
+        x = self.winfo_x() + (self.winfo_width() // 2) - (w // 2)
+        y = self.winfo_y() + (self.winfo_height() // 2) - (h // 2)
+        dialog.geometry(f"{w}x{h}+{x}+{y}")
+
+        inner = ctk.CTkFrame(dialog, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=20, pady=18)
+
+        ctk.CTkLabel(inner, text="Seleccione Fecha Inicio y Fecha Fin:",
+                     font=ctk.CTkFont(size=13, weight="bold"), text_color="#1E293B").pack(anchor="w")
+
+        fields = ctk.CTkFrame(inner, fg_color="transparent")
+        fields.pack(fill="x", pady=(12, 8))
+
+        # Fecha inicio
+        ctk.CTkLabel(fields, text="Fecha inicio:", font=ctk.CTkFont(size=11), text_color="#64748B").grid(row=0, column=0, sticky="w")
+        # Fecha fin
+        ctk.CTkLabel(fields, text="Fecha fin:", font=ctk.CTkFont(size=11), text_color="#64748B").grid(row=1, column=0, sticky="w", pady=(8, 0))
+
+        if has_tkcalendar:
+            # Mostrar dos calendarios visuales (inicio / fin)
+            try:
+                from tkcalendar import Calendar  # type: ignore
+
+                cal_container = ctk.CTkFrame(fields, fg_color="transparent")
+                cal_container.grid(row=0, column=1, rowspan=2, padx=(8, 0))
+
+                left_frame = ctk.CTkFrame(cal_container, fg_color="transparent")
+                left_frame.pack(side="left", padx=(0, 6))
+                right_frame = ctk.CTkFrame(cal_container, fg_color="transparent")
+                right_frame.pack(side="left")
+
+                start_widget = Calendar(left_frame, date_pattern='dd/MM/yyyy', selectmode='day')
+                start_widget.pack()
+                end_widget = Calendar(right_frame, date_pattern='dd/MM/yyyy', selectmode='day')
+                end_widget.pack()
+
+            except Exception:
+                # Si por alguna razón Calendar falla, volver a usar DateEntry
+                start_widget = DateEntry(fields, date_pattern='dd/MM/yyyy')
+                end_widget = DateEntry(fields, date_pattern='dd/MM/yyyy')
+        else:
+            start_widget = ctk.CTkEntry(fields, placeholder_text="DD/MM/YYYY", width=180)
+            end_widget = ctk.CTkEntry(fields, placeholder_text="DD/MM/YYYY", width=180)
+
+        start_widget.grid(row=0, column=1, padx=(8, 0))
+        end_widget.grid(row=1, column=1, padx=(8, 0), pady=(8, 0))
+
+        # Prellenar con valores actuales o hoy
+        try:
+            cur_start = self.start_date_entry.get().strip()
+            cur_end = self.end_date_entry.get().strip()
+        except Exception:
+            cur_start = cur_end = ""
+
+        # Prellenar widgets: soportar tanto DateEntry/Entry como Calendar
+        def _set_widget_date(widget, date_str):
+            if not date_str:
+                return
+            try:
+                # Para widgets tipo Entry / DateEntry
+                widget.delete(0, 'end')
+                widget.insert(0, date_str)
+            except Exception:
+                try:
+                    # Para tkcalendar.Calendar
+                    from datetime import datetime as _dt
+                    d = _dt.strptime(date_str, '%d/%m/%Y').date()
+                    if hasattr(widget, 'selection_set'):
+                        widget.selection_set(d)
+                    elif hasattr(widget, 'set_date'):
+                        widget.set_date(d)
+                except Exception:
+                    pass
+
+        _set_widget_date(start_widget, cur_start)
+        _set_widget_date(end_widget, cur_end)
+
+        # Formatos (PDF / Excel)
+        formats_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        formats_frame.pack(fill="x", pady=(6, 0))
+
+        pdf_var = ctk.BooleanVar(value=(format_type == "pdf" or format_type is None))
+        excel_var = ctk.BooleanVar(value=(format_type == "excel" or format_type is None))
+
+        ctk.CTkCheckBox(formats_frame, text="Exportar PDF", variable=pdf_var).pack(side="left", padx=(0, 12))
+        ctk.CTkCheckBox(formats_frame, text="Exportar Excel", variable=excel_var).pack(side="left")
+
+        # Botones
+        btns = ctk.CTkFrame(inner, fg_color="transparent")
+        btns.pack(fill="x", pady=(14, 0))
+
+        def _get_widget_date(widget):
+            try:
+                return widget.get().strip()
+            except Exception:
+                try:
+                    return widget.get_date()
+                except Exception:
+                    try:
+                        # Calendar
+                        return widget.get_date()
+                    except Exception:
+                        return ''
+
+
+        def on_ok():
+            s = _get_widget_date(start_widget) or ""
+            e = _get_widget_date(end_widget) or ""
+
+            # Setear en los campos visibles para mantener compatibilidad
+            try:
+                self.start_date_entry.delete(0, "end")
+                self.start_date_entry.insert(0, s)
+                self.end_date_entry.delete(0, "end")
+                self.end_date_entry.insert(0, e)
+            except Exception:
+                pass
+
+            # Validar selección de formato
+            selected_pdf = pdf_var.get()
+            selected_excel = excel_var.get()
+
+            if not selected_pdf and not selected_excel:
+                self.show_message("Selecciona al menos un formato (PDF y/o Excel)", "warning")
+                return
+
+            dialog.destroy()
+
+            # Llamar al exportador con las fechas ya en los campos para cada formato seleccionado
+            if selected_pdf:
+                self.export_report("pdf")
+            if selected_excel:
+                self.export_report("excel")
+
+        def on_cancel():
+            dialog.destroy()
+
+        ctk.CTkButton(btns, text="Cancelar", width=120, command=on_cancel,
+                      fg_color="#F1F5F9", text_color="#475569").pack(side="left")
+        ctk.CTkButton(btns, text="Generar", width=120, command=on_ok,
+                      fg_color="#0EA5A4", text_color="#FFFFFF").pack(side="right")
+
+        if not has_tkcalendar:
+            # Si no hay tkcalendar, mostrar nota para instalar (no obligatorio)
+            ctk.CTkLabel(inner, text="(Para un selector visual instala 'tkcalendar')",
+                         font=ctk.CTkFont(size=10), text_color="#94A3B8").pack(anchor="w", pady=(8, 0))
 
     def create_evolution_chart(self, parent):
         """Crea el gráfico de evolución del inventario."""

@@ -269,22 +269,116 @@ class ReportsController:
             
             df = pd.DataFrame(report_data)
             
+            gen_date = datetime.now()
+            gen_date_str = gen_date.strftime("%d-%m-%Y")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             exports_dir = "exports/reports"
             
             if not os.path.exists(exports_dir):
                 os.makedirs(exports_dir, exist_ok=True)
-            
+
+            # Prepare range strings (for filename and content)
+            start_fname = start_date.strftime("%d-%m-%Y") if start_date else "ALL"
+            end_fname = end_date.strftime("%d-%m-%Y") if end_date else "ALL"
+            range_fname = f"{start_fname}_to_{end_fname}"
+
+            start_content = start_date.strftime("%d/%m/%Y") if start_date else "—"
+            end_content = end_date.strftime("%d/%m/%Y") if end_date else "—"
+
             if format_type.lower() == "pdf":
-                filename = f"reporte_inventario_{timestamp}.csv"
-                filepath = os.path.join(exports_dir, filename)
-                df.to_csv(filepath, index=False, encoding='utf-8-sig')
-                return True, filepath
+                # Generar PDF a partir del DataFrame usando matplotlib (tabla)
+                try:
+                    import matplotlib
+                    matplotlib.use('Agg')
+                    import matplotlib.pyplot as plt
+
+                    filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.pdf"
+                    filepath = os.path.join(exports_dir, filename)
+
+                    # Crear figura tamaño A4 aproximado (8.27 x 11.69 inches)
+                    fig, ax = plt.subplots(figsize=(8.27, 11.69))
+                    ax.axis('off')
+
+                    # Título
+                    title = "Reporte de Inventario"
+                    # Encabezado con fecha de generación
+                    header_text = f"{title} — Generado: {gen_date_str} — Rango: {start_content} a {end_content}"
+                    ax.text(0.5, 0.98, header_text, transform=fig.transFigure,
+                        ha='center', va='top', fontsize=16, weight='bold')
+
+                    # Construir tabla; si hay muchas filas, romper en varias páginas
+                    max_rows_per_page = 35
+                    total_rows = len(df)
+
+                    if total_rows <= max_rows_per_page:
+                        tbl = ax.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='left')
+                        tbl.auto_set_font_size(False)
+                        tbl.set_fontsize(8)
+                        tbl.scale(1, 1.2)
+                        plt.tight_layout()
+                        fig.savefig(filepath, bbox_inches='tight')
+                        plt.close(fig)
+                    else:
+                        # Paginado simple: usar varias figuras
+                        pages = (total_rows // max_rows_per_page) + (1 if total_rows % max_rows_per_page else 0)
+                        for p in range(pages):
+                            start = p * max_rows_per_page
+                            end = start + max_rows_per_page
+                            sub_df = df.iloc[start:end]
+                            fig_p, ax_p = plt.subplots(figsize=(8.27, 11.69))
+                            ax_p.axis('off')
+                            ax_p.text(0.5, 0.98, f"{title} — Generado: {gen_date_str} — Rango: {start_content} a {end_content} (Página {p+1}/{pages})", transform=fig_p.transFigure,
+                                      ha='center', va='top', fontsize=14, weight='bold')
+                            tbl = ax_p.table(cellText=sub_df.values, colLabels=sub_df.columns, loc='center', cellLoc='left')
+                            tbl.auto_set_font_size(False)
+                            tbl.set_fontsize(8)
+                            tbl.scale(1, 1.2)
+                            out_path = filepath if p == 0 else filepath.replace('.pdf', f'_p{p+1}.pdf')
+                            fig_p.savefig(out_path, bbox_inches='tight')
+                            plt.close(fig_p)
+
+                    return True, filepath
+                except Exception as pdf_e:
+                    Logger.error(f"Error generando PDF: {pdf_e}", "REPORTS_CONTROLLER")
+                    # Fallback a CSV
+                    filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.csv"
+                    filepath = os.path.join(exports_dir, filename)
+                    df.to_csv(filepath, index=False, encoding='utf-8-sig')
+                    return True, filepath
             elif format_type.lower() == "excel":
-                filename = f"reporte_inventario_{timestamp}.xlsx"
+                filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.xlsx"
                 filepath = os.path.join(exports_dir, filename)
-                df.to_excel(filepath, index=False, engine='openpyxl')
-                return True, filepath
+                try:
+                    # Escribir Excel con cabecera que incluya la fecha de generación
+                    with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
+                        # Escribir un título, fecha de generación y rango en las primeras filas
+                        workbook = writer.book
+                        # Escribir el dataframe a partir de la fila 3 (startrow=2)
+                        df.to_excel(writer, index=False, startrow=2)
+                        # Acceder a la hoja activa y poner título
+                        sheet = writer.sheets.get('Sheet1') or writer.sheets.get(writer.book.sheetnames[0])
+                        try:
+                            # Escribir título, fecha de generación y rango
+                            sheet.cell(row=1, column=1, value="Reporte de Inventario")
+                            sheet.cell(row=2, column=1, value=f"Generado: {gen_date_str}")
+                            sheet.cell(row=3, column=1, value=f"Rango: {start_content} a {end_content}")
+                        except Exception:
+                            pass
+                    return True, filepath
+                except Exception as ex_e:
+                    # Fallback a CSV si no se puede escribir xlsx
+                    Logger.error(f"Error escribiendo Excel (fallback CSV): {ex_e}", "REPORTS_CONTROLLER")
+                    csv_name = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.csv"
+                    csv_path = os.path.join(exports_dir, csv_name)
+                    # Prepend metadata lines (generation date + range) then the dataframe
+                    try:
+                        with open(csv_path, 'w', encoding='utf-8-sig', newline='') as f:
+                            f.write(f"Reporte de Inventario\nGenerado: {gen_date_str}\nRango: {start_content} a {end_content}\n")
+                            df.to_csv(f, index=False)
+                    except Exception:
+                        # Fallback simple write
+                        df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+                    return True, csv_path
             else:
                 return False, "Formato no soportado"
                 
