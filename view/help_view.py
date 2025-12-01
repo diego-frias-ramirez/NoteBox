@@ -348,7 +348,7 @@ class HelpView(BaseView):
 
         # Enlace al repositorio (simulado)
         def open_repo():
-            webbrowser.open("https://github.com/tu-equipo/notebox")
+            webbrowser.open("https://github.com/diego-frias-ramirez/NoteBox")
 
         ctk.CTkButton(
             self.detail_area,

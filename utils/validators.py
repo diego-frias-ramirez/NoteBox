@@ -259,8 +259,13 @@ class Validators:
             if len(data['password']) < 6:
                 return False, "La contraseña debe tener al menos 6 caracteres."
 
-        # Validar rol
-        if data['rol'] not in ['admin', 'empleado']:
+        # Validar rol (aceptar mayúsculas/minúsculas)
+        try:
+            role_value = str(data['rol']).lower()
+        except Exception:
+            return False, "El rol debe ser 'admin' o 'empleado'."
+
+        if role_value not in ['admin', 'empleado']:
             return False, "El rol debe ser 'admin' o 'empleado'."
 
         return True, ""

@@ -39,6 +39,34 @@ class UsersView(BaseView):
             page_subtitle="Administrar cuentas y permisos de acceso"
         )
 
+    def _load_icon(self, name, size=(20, 20)):
+        """Intenta cargar un icono desde `assets/icons` probando varias extensiones y cacheándolo.
+
+        Devuelve un `CTkImage` o `None` si no se encuentra/puede cargar.
+        """
+        # Usar cache si ya fue cargado (incluyendo tamaño)
+        key = f"{name}:{size[0]}x{size[1]}"
+        if key in self.images:
+            return self.images[key]
+
+        icons_dir = os.path.join(self.base_path, "..", "assets", "icons")
+        candidates = [name, f"{name}.png", f"{name}.ico", f"{name}.jpg", f"{name}.gif"]
+
+        for cand in candidates:
+            path = os.path.join(icons_dir, cand)
+            try:
+                if os.path.exists(path):
+                    img = Image.open(path)
+                    img = img.resize(size, Image.LANCZOS)
+                    ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=size)
+                    self.images[key] = ctk_img
+                    return ctk_img
+            except Exception:
+                # Intentar siguiente candidato
+                continue
+
+        return None
+
     def create_content(self):
         """Crea el contenido específico del módulo de usuarios."""
         # Frame principal para el contenido (heredado de BaseView)
@@ -202,13 +230,55 @@ class UsersView(BaseView):
                 font=ctk.CTkFont(size=12, weight="bold"), text_color="#64748B", anchor="w"
             ).pack(side="left", padx=8)
 
+        # Calcular ancho mínimo de tabla (suma de anchos de columnas + separaciones)
+        total_columns_width = sum(w for _, w in columns)
+        # añadir padding aproximado por columna y margen extra
+        total_padding = len(columns) * 16 + 40
+        self._table_min_width = total_columns_width + total_padding
+
         # Separador
         separator = ctk.CTkFrame(table_frame, fg_color="#F1F5F9", height=1)
         separator.pack(fill="x", padx=15)
 
-        # Contenedor para filas (scrollable frame)
-        self.rows_container = ctk.CTkScrollableFrame(table_frame, fg_color="transparent", height=350)
-        self.rows_container.pack(fill="both", expand=True, padx=15, pady=(10, 15))
+        # Contenedor para filas con scroll horizontal y vertical
+        container = ctk.CTkFrame(table_frame, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=15, pady=(10, 15))
+
+        # Canvas y scrollbars (usamos tk.Canvas para controlar ambos ejes)
+        canvas = tk.Canvas(container, bg="#FFFFFF", highlightthickness=0)
+        v_scroll = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        h_scroll = tk.Scrollbar(container, orient="horizontal", command=canvas.xview)
+        canvas.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
+
+        v_scroll.pack(side="right", fill="y")
+        h_scroll.pack(side="bottom", fill="x")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        # Frame interior donde se colocarán las filas (puede contener widgets CTk)
+        self.rows_container = ctk.CTkFrame(canvas, fg_color="transparent")
+        window_id = canvas.create_window((0, 0), window=self.rows_container, anchor="nw")
+
+        # Actualizar el scrollregion cuando cambie el tamaño del contenido
+        def _on_frame_config(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        self.rows_container.bind("<Configure>", _on_frame_config)
+
+        # Ajustar el ancho del frame interior: permitir scroll horizontal cuando
+        # el canvas sea más estrecho que el ancho mínimo de la tabla.
+        def _on_canvas_config(event):
+            try:
+                new_w = max(event.width, self._table_min_width)
+                canvas.itemconfig(window_id, width=new_w)
+            except Exception:
+                pass
+        canvas.bind("<Configure>", _on_canvas_config)
+
+        # Soporte de rueda del ratón (Windows)
+        def _on_mousewheel(event):
+            # event.delta es múltiplo de 120 en Windows
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        # Bind a la ventana para capturar la rueda cuando el cursor esté sobre el canvas
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
         # Footer con paginación (inicializar etiqueta de paginación)
         footer_frame = ctk.CTkFrame(table_frame, fg_color="transparent", height=40)
@@ -289,21 +359,7 @@ class UsersView(BaseView):
             font=ctk.CTkFont(size=10, weight="bold"), text_color=text_color
         ).pack(padx=8, pady=4)
 
-        # Rol (120px)
-        role_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=110)
-        role_frame.pack(side="left", padx=8)
-        role_frame.pack_propagate(False)
-        
-        role_name = user["rol"].lower() if user["rol"] else "empleado"
-        role_colors = {
-            "admin": ("#00B4D8", "#FFFFFF"),
-            "empleado": ("#64748B", "#FFFFFF")
-        }
-        bg_color, text_color = role_colors.get(role_name, ("#64748B", "#FFFFFF"))
-        
-        role_badge = ctk.CTkFrame(role_frame, fg_color=bg_color, corner_radius=6, height=24)
-        role_badge.pack(side="left", expand=False)
-        ctk.CTkLabel(role_badge, text=role_name.upper(), font=ctk.CTkFont(size=9, weight="bold"), text_color=text_color).pack(padx=10, pady=3)
+        # (Solo una columna de Rol; la representamos arriba)
 
         # Estado
         status_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=100)
@@ -324,22 +380,6 @@ class UsersView(BaseView):
             font=ctk.CTkFont(size=10, weight="bold"), text_color=text_color
         ).pack(padx=12, pady=4)
 
-        # Estado (100px)
-        status_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=100)
-        status_frame.pack(side="left", padx=8)
-        status_frame.pack_propagate(False)
-        
-        status = user["estado"]
-        badge_colors = {
-            "Activo": ("#DCFCE7", "#16A34A"),
-            "Inactivo": ("#FEE2E2", "#DC2626")
-        }
-        bg_color, text_color = badge_colors.get(status, badge_colors["Activo"])
-        
-        badge = ctk.CTkFrame(status_frame, fg_color=bg_color, corner_radius=6, height=24)
-        badge.pack(side="left")
-        ctk.CTkLabel(badge, text=status, font=ctk.CTkFont(size=9, weight="bold"), text_color=text_color).pack(padx=10, pady=3)
-
         # Último Acceso (150px)
         ultimo_acceso_text = user["ultimo_acceso"].strftime("%Y-%m-%d") if user["ultimo_acceso"] else "Nunca"
         ultimo_acceso_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=150)
@@ -348,72 +388,64 @@ class UsersView(BaseView):
         ctk.CTkLabel(ultimo_acceso_frame, text=ultimo_acceso_text, font=ctk.CTkFont(size=11), text_color="#64748B", anchor="w").pack(side="left", fill="both", expand=True)
 
         # Acciones (Editar, Cambiar Estado, Eliminar)
-        actions_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=100) # <-- Ancho aumentado a 100
+        actions_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=160)
+        # Empaquetar a la izquierda para mantener el orden de columnas y permitir scroll horizontal
         actions_frame.pack(side="left", padx=8)
         actions_frame.pack_propagate(False)
 
         # Botón Editar
-        edit_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "edit.png")
-        try:
-            img = Image.open(edit_icon_path)
-            img = img.resize((20, 20), Image.LANCZOS)
-            edit_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
+        edit_icon = self._load_icon("edit", size=(20, 20))
+        if edit_icon:
             edit_btn = ctk.CTkButton(
-                actions_frame, image=edit_icon, text="", width=28, height=28,
+                actions_frame, image=edit_icon, text="", width=34, height=34,
                 fg_color="transparent", hover_color="#E0F7FA",
                 corner_radius=6,
                 command=lambda u=user: self.edit_user(u)
             )
-        except:
+        else:
             edit_btn = ctk.CTkButton(
-                actions_frame, text="✏️", width=28, height=28,
+                actions_frame, text="✏️", width=34, height=34,
                 fg_color="transparent", hover_color="#E0F7FA",
                 corner_radius=6,
                 command=lambda u=user: self.edit_user(u)
             )
-        edit_btn.pack(side="left", padx=2)
+        edit_btn.pack(side="left", padx=(4, 6))
 
-        # Botón Cambiar Estado
-        status_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "low_stock.png") # Reemplaza por un ícono de "toggle" o "status"
-        try:
-            img = Image.open(status_icon_path)
-            img = img.resize((20, 20), Image.LANCZOS)
-            status_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
+        # Botón Cambiar Estado (usamos icono genérico 'low_stock' si existe)
+        status_icon = self._load_icon("low_stock", size=(20, 20))
+        if status_icon:
             status_btn = ctk.CTkButton(
-                actions_frame, image=status_icon, text="", width=28, height=28,
+                actions_frame, image=status_icon, text="", width=34, height=34,
                 fg_color="transparent", hover_color="#E0F7FA",
                 corner_radius=6,
                 command=lambda u=user: self.toggle_user_status(u)
             )
-        except:
+        else:
             status_btn = ctk.CTkButton(
-                actions_frame, text="🔄", width=28, height=28,
+                actions_frame, text="🔄", width=34, height=34,
                 fg_color="transparent", hover_color="#E0F7FA",
                 corner_radius=6,
                 command=lambda u=user: self.toggle_user_status(u)
             )
-        status_btn.pack(side="left", padx=2)
+        status_btn.pack(side="left", padx=(0, 6))
 
         # Botón Eliminar
-        delete_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "delete.png")
-        try:
-            img = Image.open(delete_icon_path)
-            img = img.resize((20, 20), Image.LANCZOS)
-            delete_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
+        delete_icon = self._load_icon("delete", size=(20, 20))
+        if delete_icon:
             delete_btn = ctk.CTkButton(
-                actions_frame, image=delete_icon, text="", width=28, height=28,
+                actions_frame, image=delete_icon, text="", width=34, height=34,
                 fg_color="transparent", hover_color="#FEE2E2",
                 corner_radius=6,
                 command=lambda u=user: self.delete_user(u)
             )
-        except:
+        else:
             delete_btn = ctk.CTkButton(
-                actions_frame, text="🗑️", width=28, height=28,
+                actions_frame, text="🗑️", width=34, height=34,
                 fg_color="transparent", hover_color="#FEE2E2",
                 corner_radius=6,
                 command=lambda u=user: self.delete_user(u)
             )
-        delete_btn.pack(side="left", padx=2)
+        delete_btn.pack(side="left", padx=(0, 4))
 
     def create_roles_description(self, parent):
         """Crea la descripción de los roles (Administrador y Empleado)."""
