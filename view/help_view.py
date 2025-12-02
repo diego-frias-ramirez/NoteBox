@@ -400,3 +400,14 @@ if __name__ == "__main__":
     example_user = {"id": 1, "nombre": "Admin", "rol": "Admin"}
     app = HelpView(example_user)
     app.run()
+
+    def get_notification_count(self):
+        """Obtiene el número de notificaciones no leídas."""
+        try:
+            from model.alert_model import AlertModel
+            alert_model = AlertModel()
+            unread_alerts = alert_model.get_unread_alerts()
+            return len(unread_alerts) if unread_alerts else 0
+        except Exception as e:
+            print(f"Error al contar notificaciones: {e}")
+            return 0
