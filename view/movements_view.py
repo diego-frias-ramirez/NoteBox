@@ -7,6 +7,8 @@ import customtkinter as ctk
 from PIL import Image
 import os
 import datetime
+import tkinter as tk
+from tkinter import ttk
 
 from components.base_view import BaseView
 from controller.movements_controller import MovementsController
@@ -115,7 +117,7 @@ class MovementsView(BaseView):
             text_color="#2b2d42"
         ).pack(anchor="w", pady=(0, 10))
 
-        self.product_combo = ctk.CTkComboBox(product_frame, values=["Cargando..."])
+        self.product_combo = ctk.CTkComboBox(product_frame, values=["Seleccionar"])
         self.product_combo.pack(fill="x", pady=(0, 10))
 
         # Cantidad
@@ -191,6 +193,20 @@ class MovementsView(BaseView):
             font=ctk.CTkFont(size=20, weight="bold"),
             text_color="#2b2d42"
         ).pack(anchor="w")
+
+        # Botón Ver Todos
+        view_all_btn = ctk.CTkButton(
+            history_header,
+            text="📋 Ver todos",
+            width=120,
+            height=35,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            fg_color="#00b4d8",
+            hover_color="#0096c7",
+            corner_radius=8,
+            command=self.open_all_movements_window
+        )
+        view_all_btn.pack(side="right")
 
         # Tarjetas de Resumen Diario
         summary_frame = ctk.CTkFrame(right_column, fg_color="transparent")
@@ -408,6 +424,114 @@ class MovementsView(BaseView):
 
         for movement in self.movements:
             self.create_movement_row(self.movements_list, movement)
+
+    def open_all_movements_window(self):
+        """
+        Abre una ventana nueva con un Treeview que muestra todos los movimientos completos.
+        """
+        try:
+            all_movements = self.controller.get_all_movements()
+
+            # Crear ventana
+            win = ctk.CTkToplevel(self)
+            win.title("Todos los movimientos")
+            win.geometry("900x500")
+            win.transient(self)
+            win.grab_set()
+
+            # Encabezado con botones
+            top_frame = ctk.CTkFrame(win, fg_color="transparent")
+            top_frame.pack(fill="x", padx=12, pady=(12, 6))
+
+            refresh_btn = ctk.CTkButton(top_frame, text="🔄 Actualizar", command=lambda: self._refresh_all_movements_tree(tree), width=110, height=34)
+            refresh_btn.pack(side="right", padx=(6, 0))
+
+            close_btn = ctk.CTkButton(top_frame, text="Cerrar", command=win.destroy, width=100, height=34, fg_color="#EF4444")
+            close_btn.pack(side="right")
+
+            # Contenedor para Treeview (con estilo minimal)
+            tree_frame = ctk.CTkFrame(win, fg_color="#FFFFFF")
+            tree_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+
+            # Treeview (usamos ttk para columnas)
+            cols = ("id", "tipo", "producto", "cantidad", "motivo", "notas", "fecha", "usuario")
+            tree = ttk.Treeview(tree_frame, columns=cols, show="headings")
+            tree.pack(side="left", fill="both", expand=True)
+
+            # Scrollbars
+            vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+            vsb.pack(side="right", fill="y")
+            tree.configure(yscrollcommand=vsb.set)
+
+            # Configurar columnas
+            tree.heading("id", text="ID")
+            tree.heading("tipo", text="Tipo")
+            tree.heading("producto", text="Producto")
+            tree.heading("cantidad", text="Cantidad")
+            tree.heading("motivo", text="Motivo")
+            tree.heading("notas", text="Notas")
+            tree.heading("fecha", text="Fecha")
+            tree.heading("usuario", text="Usuario")
+
+            tree.column("id", width=60, anchor="center")
+            tree.column("tipo", width=90, anchor="center")
+            tree.column("producto", width=260, anchor="w")
+            tree.column("cantidad", width=80, anchor="center")
+            tree.column("motivo", width=180, anchor="w")
+            tree.column("notas", width=200, anchor="w")
+            tree.column("fecha", width=130, anchor="center")
+            tree.column("usuario", width=140, anchor="w")
+
+            # Insertar datos
+            for m in all_movements:
+                fecha_val = m.get("fecha")
+                if fecha_val is None:
+                    fecha_str = ""
+                elif isinstance(fecha_val, str):
+                    fecha_str = fecha_val
+                else:
+                    try:
+                        fecha_str = fecha_val.strftime("%Y-%m-%d %H:%M:%S")
+                    except Exception:
+                        fecha_str = str(fecha_val)
+
+                tree.insert("", "end", values=(
+                    m.get("id"), m.get("tipo"), m.get("producto_nombre"), m.get("cantidad"),
+                    m.get("motivo"), m.get("notas") or "", fecha_str, m.get("usuario_nombre")
+                ))
+
+            # Ordenamiento sencillo por fecha (predeterminado ya ordenado por modelo). Añadimos click en encabezados si se desea.
+            # No es necesario recargar el Treeview manualmente al abrir si la data proviene del controlador.
+
+        except Exception as e:
+            Logger.log_error_exception(e, "MOVEMENTS_VIEW")
+            self.show_message("Error al abrir ventana de todos los movimientos.", "error")
+
+    def _refresh_all_movements_tree(self, tree):
+        """
+        Refresca el contenido del Treeview con todos los movimientos.
+        """
+        try:
+            for row in tree.get_children():
+                tree.delete(row)
+            all_movements = self.controller.get_all_movements()
+            for m in all_movements:
+                fecha_val = m.get("fecha")
+                if fecha_val is None:
+                    fecha_str = ""
+                elif isinstance(fecha_val, str):
+                    fecha_str = fecha_val
+                else:
+                    try:
+                        fecha_str = fecha_val.strftime("%Y-%m-%d %H:%M:%S")
+                    except Exception:
+                        fecha_str = str(fecha_val)
+                tree.insert("", "end", values=(
+                    m.get("id"), m.get("tipo"), m.get("producto_nombre"), m.get("cantidad"),
+                    m.get("motivo"), m.get("notas") or "", fecha_str, m.get("usuario_nombre")
+                ))
+        except Exception as e:
+            Logger.log_error_exception(e, "MOVEMENTS_VIEW")
 
     def create_movement_row(self, parent, movement):
         """Crea una fila para un movimiento en la tabla."""
