@@ -152,12 +152,12 @@ INSERT INTO categorias (nombre, descripcion, activo) VALUES
 ('Otros', 'Otros productos de papelería', TRUE)
 ON DUPLICATE KEY UPDATE nombre=nombre; -- Evita duplicados si se ejecuta de nuevo
 
--- Usuarios
+-- Usuarios (con contraseñas hasheadas en SHA256)
 INSERT INTO usuarios (usuario, contrasena, nombre, email, rol, estado) VALUES
-('admin', 'admin123', 'Administrador', 'admin@notebox.com', 'Admin', 'Activo'),
-('vendedor1', 'vendedor123', 'María González', 'maria@notebox.com', 'Empleado', 'Activo'),
-('vendedor2', 'vendedor123', 'Carlos Rodríguez', 'carlos@notebox.com', 'Empleado', 'Activo'),
-('almacen', 'almacen123', 'Ana Martínez', 'ana@notebox.com', 'Empleado', 'Activo')
+('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'Administrador', 'admin@notebox.com', 'Admin', 'Activo'),
+('vendedor1', '1c142b2d01aa34e9a36bde480645a57fd69e14155dacfab5a3f9257b77fdc8d8', 'María González', 'maria@notebox.com', 'Empleado', 'Activo'),
+('vendedor2', '1c142b2d01aa34e9a36bde480645a57fd69e14155dacfab5a3f9257b77fdc8d8', 'Carlos Rodríguez', 'carlos@notebox.com', 'Empleado', 'Activo'),
+('almacen', 'c1c224b03cd9bc7b6a86d77f5dace40191766c485cd55dc48caf9ac873335d6f', 'Ana Martínez', 'ana@notebox.com', 'Empleado', 'Activo')
 ON DUPLICATE KEY UPDATE usuario=usuario;
 
 -- Productos de ejemplo (Agregamos 'activo' explícitamente)
