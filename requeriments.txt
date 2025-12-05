@@ -20,14 +20,17 @@ mysql-connector-python==8.2.0
 # Expresiones regulares (incluido en Python)
 # re - viene instalado por defecto
 
-# Opcional: Para generación de reportes PDF (descomentar si se necesita)
-# reportlab==4.0.7
-# pillow==10.1.0
+# Para generación de reportes PDF / imágenes
+reportlab==4.0.7
+pillow==10.1.0
 
-# Opcional: Para exportar a Excel (descomentar si se necesita)
-# openpyxl==3.1.2
-# xlsxwriter==3.1.9
+# Exportar a Excel
+openpyxl==3.1.2
+xlsxwriter==3.1.9
 
-# Opcional: Para gráficos y estadísticas (descomentar si se necesita)
-# matplotlib==3.8.2
-# pandas==2.1.4
+# Gráficos / análisis
+matplotlib==3.8.2
+pandas==2.1.4
+
+# Selector visual de fechas (opcional pero recomendado)
+tkcalendar==1.6.4

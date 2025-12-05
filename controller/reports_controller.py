@@ -147,34 +147,82 @@ class ReportsController:
             Logger.error(f"Error obteniendo productos de baja rotación: {e}", "REPORTS_CONTROLLER")
             return []
 
-    def get_inventory_evolution(self, months=6):
+    def get_inventory_evolution(self, months=6, start_date=None, end_date=None):
         """Obtiene datos para gráfico de evolución del inventario."""
         try:
             from model.database import Database
-            
-            # Generar datos basados en el inventario actual
-            query = "SELECT COALESCE(SUM(stock * precio), 0) as valor_actual FROM productos WHERE activo = TRUE"
-            result = Database.execute_query(query, fetch=True)
-            
-            valor_actual = float(result[0]['valor_actual']) / 1000 if result else 50
-            
-            # Generar nombres de meses
-            now = datetime.now()
+
+            # Valor actual del inventario (suma stock * precio)
+            query_val = "SELECT COALESCE(SUM(stock * precio), 0) as valor_actual FROM productos WHERE activo = TRUE"
+            res_val = Database.execute_query(query_val, fetch=True)
+            valor_actual = float(res_val[0]['valor_actual']) if res_val and len(res_val) else 0.0
+
             months_list = []
             values_list = []
-            
-            import random
-            random.seed(42)  # Para resultados consistentes
-            
-            for i in range(5, -1, -1):
-                month_date = now - timedelta(days=30*i)
-                month_name = month_date.strftime('%b')
-                months_list.append(month_name)
-                
-                # Simular tendencia creciente con variación
-                variation = random.uniform(0.90, 1.08)
-                value = valor_actual * variation * (0.75 + (5-i)*0.05)
-                values_list.append(round(value, 1))
+
+            # Decide the list of period end dates we want to show
+            if start_date and end_date:
+                # Normalize to date objects
+                sd = start_date if isinstance(start_date, datetime) else datetime.combine(start_date, datetime.min.time())
+                ed = end_date if isinstance(end_date, datetime) else datetime.combine(end_date, datetime.min.time())
+
+                # Ensure start <= end
+                if sd > ed:
+                    sd, ed = ed, sd
+
+                # Build month periods from sd to ed (inclusive) using 1-month approximations (30 days)
+                cur = sd
+                while cur <= ed:
+                    months_list.append(cur.strftime('%b'))
+                    # We will compute period end as cur
+                    # Next step - add 30 days (approximate a month)
+                    cur = cur + timedelta(days=30)
+
+                # For each period_month end, compute the inventory value at that date
+                for i, m in enumerate(months_list):
+                    # approximate period_end by sd + i*30 days
+                    period_end = sd + timedelta(days=30 * i)
+
+                    # net movements after period_end until now
+                    query_mov = (
+                        "SELECT COALESCE(SUM((CASE WHEN m.tipo='Entrada' THEN m.cantidad WHEN m.tipo='Salida' THEN -m.cantidad END) * COALESCE(p.precio,0)), 0) as net_value "
+                        "FROM movimientos m JOIN productos p ON p.id = m.producto_id "
+                        "WHERE m.fecha > %s"
+                    )
+
+                    try:
+                        net_after = Database.execute_query(query_mov, (period_end,), fetch=True)
+                        net_after_val = float(net_after[0]['net_value']) if net_after and len(net_after) else 0.0
+                    except Exception:
+                        net_after_val = 0.0
+
+                    valor_mes = max(valor_actual - net_after_val, 0.0)
+                    values_list.append(round(valor_mes / 1000.0, 1))
+            else:
+                # backwards compatible: months count
+                now = datetime.now()
+                for i in range(months - 1, -1, -1):
+                    month_date = now - timedelta(days=30 * i)
+                    month_name = month_date.strftime('%b')
+                    months_list.append(month_name)
+
+                    # Estimación: restar valor de movimientos posteriores al 'month_date'
+                    fecha_limite = month_date
+
+                    query_mov = (
+                        "SELECT COALESCE(SUM((CASE WHEN m.tipo='Entrada' THEN m.cantidad WHEN m.tipo='Salida' THEN -m.cantidad END) * COALESCE(p.precio,0)), 0) as net_value "
+                        "FROM movimientos m JOIN productos p ON p.id = m.producto_id "
+                        "WHERE m.fecha > %s"
+                    )
+
+                    try:
+                        net_after = Database.execute_query(query_mov, (fecha_limite,), fetch=True)
+                        net_after_val = float(net_after[0]['net_value']) if net_after and len(net_after) else 0.0
+                    except Exception:
+                        net_after_val = 0.0
+
+                    valor_mes = max(valor_actual - net_after_val, 0.0)
+                    values_list.append(round(valor_mes / 1000.0, 1))
             
             Logger.info("Evolución del inventario obtenida", "REPORTS_CONTROLLER")
             return months_list, values_list
@@ -269,22 +317,116 @@ class ReportsController:
             
             df = pd.DataFrame(report_data)
             
+            gen_date = datetime.now()
+            gen_date_str = gen_date.strftime("%d-%m-%Y")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             exports_dir = "exports/reports"
             
             if not os.path.exists(exports_dir):
                 os.makedirs(exports_dir, exist_ok=True)
-            
+
+            # Prepare range strings (for filename and content)
+            start_fname = start_date.strftime("%d-%m-%Y") if start_date else "ALL"
+            end_fname = end_date.strftime("%d-%m-%Y") if end_date else "ALL"
+            range_fname = f"{start_fname}_to_{end_fname}"
+
+            start_content = start_date.strftime("%d/%m/%Y") if start_date else "—"
+            end_content = end_date.strftime("%d/%m/%Y") if end_date else "—"
+
             if format_type.lower() == "pdf":
-                filename = f"reporte_inventario_{timestamp}.csv"
-                filepath = os.path.join(exports_dir, filename)
-                df.to_csv(filepath, index=False, encoding='utf-8-sig')
-                return True, filepath
+                # Generar PDF a partir del DataFrame usando matplotlib (tabla)
+                try:
+                    import matplotlib
+                    matplotlib.use('Agg')
+                    import matplotlib.pyplot as plt
+
+                    filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.pdf"
+                    filepath = os.path.join(exports_dir, filename)
+
+                    # Crear figura tamaño A4 aproximado (8.27 x 11.69 inches)
+                    fig, ax = plt.subplots(figsize=(8.27, 11.69))
+                    ax.axis('off')
+
+                    # Título
+                    title = "Reporte de Inventario"
+                    # Encabezado con fecha de generación
+                    header_text = f"{title} — Generado: {gen_date_str} — Rango: {start_content} a {end_content}"
+                    ax.text(0.5, 0.98, header_text, transform=fig.transFigure,
+                        ha='center', va='top', fontsize=16, weight='bold')
+
+                    # Construir tabla; si hay muchas filas, romper en varias páginas
+                    max_rows_per_page = 35
+                    total_rows = len(df)
+
+                    if total_rows <= max_rows_per_page:
+                        tbl = ax.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='left')
+                        tbl.auto_set_font_size(False)
+                        tbl.set_fontsize(8)
+                        tbl.scale(1, 1.2)
+                        plt.tight_layout()
+                        fig.savefig(filepath, bbox_inches='tight')
+                        plt.close(fig)
+                    else:
+                        # Paginado simple: usar varias figuras
+                        pages = (total_rows // max_rows_per_page) + (1 if total_rows % max_rows_per_page else 0)
+                        for p in range(pages):
+                            start = p * max_rows_per_page
+                            end = start + max_rows_per_page
+                            sub_df = df.iloc[start:end]
+                            fig_p, ax_p = plt.subplots(figsize=(8.27, 11.69))
+                            ax_p.axis('off')
+                            ax_p.text(0.5, 0.98, f"{title} — Generado: {gen_date_str} — Rango: {start_content} a {end_content} (Página {p+1}/{pages})", transform=fig_p.transFigure,
+                                      ha='center', va='top', fontsize=14, weight='bold')
+                            tbl = ax_p.table(cellText=sub_df.values, colLabels=sub_df.columns, loc='center', cellLoc='left')
+                            tbl.auto_set_font_size(False)
+                            tbl.set_fontsize(8)
+                            tbl.scale(1, 1.2)
+                            out_path = filepath if p == 0 else filepath.replace('.pdf', f'_p{p+1}.pdf')
+                            fig_p.savefig(out_path, bbox_inches='tight')
+                            plt.close(fig_p)
+
+                    return True, filepath
+                except Exception as pdf_e:
+                    Logger.error(f"Error generando PDF: {pdf_e}", "REPORTS_CONTROLLER")
+                    # Fallback a CSV
+                    filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.csv"
+                    filepath = os.path.join(exports_dir, filename)
+                    df.to_csv(filepath, index=False, encoding='utf-8-sig')
+                    return True, filepath
             elif format_type.lower() == "excel":
-                filename = f"reporte_inventario_{timestamp}.xlsx"
+                filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.xlsx"
                 filepath = os.path.join(exports_dir, filename)
-                df.to_excel(filepath, index=False, engine='openpyxl')
-                return True, filepath
+                try:
+                    # Escribir Excel con cabecera que incluya la fecha de generación
+                    with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
+                        # Escribir un título, fecha de generación y rango en las primeras filas
+                        workbook = writer.book
+                        # Escribir el dataframe a partir de la fila 3 (startrow=2)
+                        df.to_excel(writer, index=False, startrow=2)
+                        # Acceder a la hoja activa y poner título
+                        sheet = writer.sheets.get('Sheet1') or writer.sheets.get(writer.book.sheetnames[0])
+                        try:
+                            # Escribir título, fecha de generación y rango
+                            sheet.cell(row=1, column=1, value="Reporte de Inventario")
+                            sheet.cell(row=2, column=1, value=f"Generado: {gen_date_str}")
+                            sheet.cell(row=3, column=1, value=f"Rango: {start_content} a {end_content}")
+                        except Exception:
+                            pass
+                    return True, filepath
+                except Exception as ex_e:
+                    # Fallback a CSV si no se puede escribir xlsx
+                    Logger.error(f"Error escribiendo Excel (fallback CSV): {ex_e}", "REPORTS_CONTROLLER")
+                    csv_name = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.csv"
+                    csv_path = os.path.join(exports_dir, csv_name)
+                    # Prepend metadata lines (generation date + range) then the dataframe
+                    try:
+                        with open(csv_path, 'w', encoding='utf-8-sig', newline='') as f:
+                            f.write(f"Reporte de Inventario\nGenerado: {gen_date_str}\nRango: {start_content} a {end_content}\n")
+                            df.to_csv(f, index=False)
+                    except Exception:
+                        # Fallback simple write
+                        df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+                    return True, csv_path
             else:
                 return False, "Formato no soportado"
                 
