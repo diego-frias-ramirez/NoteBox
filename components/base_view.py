@@ -179,6 +179,21 @@ class BaseView(ctk.CTk):
             text_color="#1E293B"
         ).pack(side="left", padx=20, pady=15)
         
+        # Botón para limpiar notificaciones antiguas (esquina superior derecha del popup)
+        clean_btn = ctk.CTkButton(
+            header_frame,
+            text="🗑️ Limpiar",
+            command=lambda: self.clean_old_notifications_popup(popup),
+            fg_color="#EF4444",
+            hover_color="#DC2626",
+            text_color="white",
+            height=35,
+            corner_radius=8,
+            width=120
+        )
+        clean_btn.pack(side="right", padx=20, pady=12)
+
+        
         # Contenedor de notificaciones
         content_frame = ctk.CTkScrollableFrame(
             popup,
@@ -192,6 +207,7 @@ class BaseView(ctk.CTk):
             from model.alert_model import AlertModel
             alert_model = AlertModel()
             notifications = alert_model.get_unread_alerts()
+            
             
             if not notifications:
                 no_notif_label = ctk.CTkLabel(
@@ -246,6 +262,7 @@ class BaseView(ctk.CTk):
                     )
                     fecha_label.pack(anchor="w", pady=(5, 0))
                     
+                    
         except Exception as e:
             error_label = ctk.CTkLabel(
                 content_frame,
@@ -255,6 +272,7 @@ class BaseView(ctk.CTk):
             )
             error_label.pack(expand=True)
             print(f"Error en show_notifications: {e}")
+        
         
         # Botón cerrar
         close_btn = ctk.CTkButton(
@@ -267,6 +285,46 @@ class BaseView(ctk.CTk):
             height=35
         )
         close_btn.pack(fill="x", padx=15, pady=(0, 15))
+    
+    def clean_old_notifications_popup(self, popup):
+        """Limpia todas las notificaciones manualmente desde el popup."""
+        try:
+            from tkinter import messagebox
+            from model.alert_model import AlertModel
+            
+            # Confirmar con el usuario
+            confirm = messagebox.askyesno(
+                "Limpiar Notificaciones",
+                "¿Está seguro que desea eliminar TODAS las notificaciones?\n\nEsta acción no se puede deshacer."
+            )
+            
+            if not confirm:
+                return
+            
+            # Eliminar todas las alertas
+            alert_model = AlertModel()
+            deleted = alert_model.delete_read_alerts()
+            
+            if deleted > 0:
+                messagebox.showinfo(
+                    "Limpieza Completada",
+                    f"Se eliminaron {deleted} notificaciones correctamente."
+                )
+                # Cerrar el popup
+                popup.destroy()
+            else:
+                messagebox.showinfo(
+                    "Sin Notificaciones",
+                    "No hay notificaciones para eliminar."
+                )
+                
+        except Exception as e:
+            from tkinter import messagebox
+            messagebox.showerror(
+                "Error",
+                "No se pudieron eliminar las notificaciones."
+            )
+            print(f"Error al limpiar notificaciones: {e}")
     
     def get_notification_count(self):
         """Obtiene el número de notificaciones (sobreescribir en subclases)."""

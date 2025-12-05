@@ -7,6 +7,8 @@ import customtkinter as ctk
 from PIL import Image
 import os
 import webbrowser
+import subprocess
+import sys
 
 from components.base_view import BaseView
 from utils.logger import Logger
@@ -211,14 +213,14 @@ class HelpView(BaseView):
         # Botón de acción
         ctk.CTkButton(
             self.detail_area,
-            text="Descargar Manual en PDF",
+            text="Ver Manual",
             font=ctk.CTkFont(size=13, weight="bold"),
             fg_color="#00B4D8",
             text_color="#FFFFFF",
             hover_color="#0096B4",
             corner_radius=8,
             height=40,
-            command=self.download_user_manual
+            command=self.open_user_manual
         ).pack(pady=(20, 0))
 
     def show_support_info(self):
@@ -362,14 +364,50 @@ class HelpView(BaseView):
             command=open_repo
         ).pack(pady=(10, 0))
 
-    def download_user_manual(self):
-        """Simula la descarga del manual de usuario."""
-        from tkinter import messagebox
-        messagebox.showinfo("Descarga", "El manual de usuario se ha descargado en la carpeta 'exports/reports/.'")
-        # En una versión real, aquí generarías un PDF y lo guardarías
+    def open_user_manual(self):
+        """Abre el archivo PDF del manual de usuario."""
+        try:
+            # Ruta del PDF en la carpeta docs
+            pdf_path = os.path.join(self.base_path, "..", "docs", "Manual de usuario.pdf")
+            
+            # Obtener la ruta absoluta
+            pdf_path = os.path.abspath(pdf_path)
+            
+            # Verificar si el archivo existe
+            if not os.path.exists(pdf_path):
+                from tkinter import messagebox
+                messagebox.showerror("Error", f"No se encontró el archivo: {pdf_path}")
+                return
+            
+            # Abrir el PDF según el sistema operativo
+            if sys.platform == "win32":
+                # Windows
+                os.startfile(pdf_path)
+            elif sys.platform == "darwin":
+                # macOS
+                subprocess.run(["open", pdf_path])
+            else:
+                # Linux
+                subprocess.run(["xdg-open", pdf_path])
+                
+        except Exception as e:
+            from tkinter import messagebox
+            messagebox.showerror("Error", f"No se pudo abrir el manual: {str(e)}")
+            Logger.error(f"Error al abrir el manual: {e}", "HELP_VIEW")
 
 if __name__ == "__main__":
     # Ejemplo para pruebas
     example_user = {"id": 1, "nombre": "Admin", "rol": "Admin"}
     app = HelpView(example_user)
     app.run()
+
+    def get_notification_count(self):
+        """Obtiene el número de notificaciones no leídas."""
+        try:
+            from model.alert_model import AlertModel
+            alert_model = AlertModel()
+            unread_alerts = alert_model.get_unread_alerts()
+            return len(unread_alerts) if unread_alerts else 0
+        except Exception as e:
+            print(f"Error al contar notificaciones: {e}")
+            return 0

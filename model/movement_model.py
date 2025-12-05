@@ -111,6 +111,30 @@ class MovementModel:
             Logger.log_error_exception(e, "MOVEMENT_MODEL")
             return []
 
+    def get_all_movements(self):
+        """
+        Obtiene todos los movimientos sin paginación.
+        Returns:
+            list: Lista completa de movimientos.
+        """
+        query = """
+            SELECT 
+                m.id, m.tipo, m.producto_id, p.nombre AS producto_nombre,
+                m.cantidad, m.motivo, m.fecha, m.usuario_id, u.nombre AS usuario_nombre,
+                m.notas
+            FROM movimientos m
+            JOIN productos p ON m.producto_id = p.id
+            JOIN usuarios u ON m.usuario_id = u.id
+            ORDER BY m.fecha DESC
+        """
+        try:
+            result = self.db.execute_query(query, fetch=True)
+            Logger.info(f"Obtenidos {len(result) if result else 0} movimientos (todos)", "MOVEMENT_MODEL")
+            return result if result else []
+        except Exception as e:
+            Logger.log_error_exception(e, "MOVEMENT_MODEL")
+            return []
+
     def get_movements_by_product(self, product_id):
         """
         Obtiene todos los movimientos de un producto específico.

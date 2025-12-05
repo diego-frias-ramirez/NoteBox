@@ -106,6 +106,8 @@ class NotificationsController:
             'Stock bajo': ('warning', '⚠️', 'Stock bajo detectado'),
             'Producto agotado': ('critical', '📦', 'Producto agotado'),
             'Sin movimiento': ('info', '📉', 'Producto sin movimiento'),
+            'Entrada de inventario': ('success', '📥', 'Entrada de inventario'),
+            'Salida de inventario': ('info', '📤', 'Salida de inventario'),
             'Backup': ('success', '✓', 'Backup completado'),
             'Actualizacion': ('info', 'ℹ️', 'Actualización disponible'),
             'Recordatorio': ('warning', '⏰', 'Recordatorio')
@@ -270,50 +272,4 @@ class NotificationsController:
             print(f"Error actualizando configuración: {e}")
             return False
     
-    def generate_sample_notifications(self):
-        """Generar notificaciones de ejemplo para testing"""
-        try:
-            conn = self.get_connection()
-            cursor = conn.cursor()
-            
-            # Obtener algunos productos para las notificaciones
-            cursor.execute("SELECT id, nombre FROM productos LIMIT 5")
-            productos = cursor.fetchall()
-            
-            # Limpiar notificaciones existentes
-            cursor.execute("DELETE FROM alertas")
-            
-            # Insertar notificaciones de ejemplo
-            sample_notifications = [
-                ('Stock bajo', productos[0][0] if productos else None, 
-                 f'tiene solo {8} unidades disponibles.', 0, 1),
-                ('Producto agotado', productos[1][0] if len(productos) > 1 else None,
-                 'se ha agotado completamente.', 0, 1),
-                ('Sin movimiento', productos[2][0] if len(productos) > 2 else None,
-                 'lleva 45 días sin rotación.', 0, 1),
-                ('Backup', None, 'El respaldo automático se realizó exitosamente.', 1, 1),
-                ('Stock bajo', productos[3][0] if len(productos) > 3 else None,
-                 f'tiene solo {12} unidades disponibles.', 0, 1),
-                ('Actualizacion', None, 'Hay una nueva versión del sistema disponible (v1.0.1).', 0, 1),
-                ('Recordatorio', None, 'Es recomendable realizar un inventario físico mensual.', 0, 1)
-            ]
-            
-            # Insertar con fechas escalonadas
-            for i, (tipo, producto_id, descripcion, leida, usuario_id) in enumerate(sample_notifications):
-                fecha = f"DATE_SUB(NOW(), INTERVAL {i * 2} HOUR)"
-                query = f"""
-                INSERT INTO alertas (tipo, producto_id, descripcion, fecha_alerta, leida, usuario_id)
-                VALUES (%s, %s, %s, {fecha}, %s, %s)
-                """
-                cursor.execute(query, (tipo, producto_id, descripcion, leida, usuario_id))
-            
-            conn.commit()
-            cursor.close()
-            conn.close()
-            
-            print("Notificaciones de ejemplo generadas exitosamente")
-            return True
-            
-        except Exception as e:
-            print(f"Error generando notificaciones de ejemplo: {e}")
-            return False
+    # generate_sample_notifications removed to enforce real notifications

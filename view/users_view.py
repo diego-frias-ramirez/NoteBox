@@ -204,83 +204,89 @@ class UsersView(BaseView):
             ctk.CTkLabel(employee_inner, text="👤", font=ctk.CTkFont(size=16), text_color="#2b2d42").place(relx=0.95, rely=0.5, anchor="center")
 
     def create_table(self, parent):
-        """Crea la tabla de usuarios."""
+        """Crea la tabla de usuarios con encabezado sincronizado."""
         table_frame = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
         table_frame.pack(fill="both", expand=True, pady=(0, 15))
-        self.table_frame = table_frame # <-- Guardar referencia para update_table
+        self.table_frame = table_frame
 
-        # Encabezado de la tabla
-        header_frame = ctk.CTkFrame(table_frame, fg_color="transparent", height=50)
-        header_frame.pack(fill="x", padx=20, pady=(15, 0))
-        header_frame.pack_propagate(False)
-
-        columns = [
-            ("Usuario", 120),
+        self.columns = [
+            ("Usuario", 140),
             ("Nombre", 180),
             ("Email", 200),
             ("Rol", 120),
             ("Estado", 100),
             ("Último Acceso", 150),
-            ("Acciones", 100)
+            ("Acciones", 160)
         ]
 
-        for name, width in columns:
-            ctk.CTkLabel(
-                header_frame, text=name, width=width,
-                font=ctk.CTkFont(size=12, weight="bold"), text_color="#64748B", anchor="w"
-            ).pack(side="left", padx=8)
-
-        # Calcular ancho mínimo de tabla (suma de anchos de columnas + separaciones)
-        total_columns_width = sum(w for _, w in columns)
-        # añadir padding aproximado por columna y margen extra
-        total_padding = len(columns) * 16 + 40
+        # Calcular ancho mínimo de tabla
+        total_columns_width = sum(w for _, w in self.columns)
+        total_padding = len(self.columns) * 16 + 40
         self._table_min_width = total_columns_width + total_padding
 
-        # Separador
-        separator = ctk.CTkFrame(table_frame, fg_color="#F1F5F9", height=1)
-        separator.pack(fill="x", padx=15)
+        # Contenedor principal con canvas para scroll sincronizado
+        main_container = ctk.CTkFrame(table_frame, fg_color="transparent")
+        main_container.pack(fill="both", expand=True, padx=15, pady=15)
 
-        # Contenedor para filas con scroll horizontal y vertical
-        container = ctk.CTkFrame(table_frame, fg_color="transparent")
-        container.pack(fill="both", expand=True, padx=15, pady=(10, 15))
-
-        # Canvas y scrollbars (usamos tk.Canvas para controlar ambos ejes)
-        canvas = tk.Canvas(container, bg="#FFFFFF", highlightthickness=0)
-        v_scroll = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
-        h_scroll = tk.Scrollbar(container, orient="horizontal", command=canvas.xview)
-        canvas.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
+        # Canvas principal para el contenido
+        self.main_canvas = tk.Canvas(main_container, bg="#FFFFFF", highlightthickness=0, height=400)
+        v_scroll = tk.Scrollbar(main_container, orient="vertical", command=self.main_canvas.yview)
+        h_scroll = tk.Scrollbar(main_container, orient="horizontal", command=self.main_canvas.xview)
+        self.main_canvas.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
 
         v_scroll.pack(side="right", fill="y")
         h_scroll.pack(side="bottom", fill="x")
-        canvas.pack(side="left", fill="both", expand=True)
+        self.main_canvas.pack(side="left", fill="both", expand=True)
 
-        # Frame interior donde se colocarán las filas (puede contener widgets CTk)
-        self.rows_container = ctk.CTkFrame(canvas, fg_color="transparent")
-        window_id = canvas.create_window((0, 0), window=self.rows_container, anchor="nw")
+        # Frame principal que contiene encabezado + filas
+        self.table_content_frame = ctk.CTkFrame(self.main_canvas, fg_color="transparent")
+        self.canvas_window = self.main_canvas.create_window((0, 0), window=self.table_content_frame, anchor="nw")
 
-        # Actualizar el scrollregion cuando cambie el tamaño del contenido
+        # Crear encabezado dentro del canvas
+        self.header_frame = ctk.CTkFrame(self.table_content_frame, fg_color="#F8FAFC", height=50)
+        self.header_frame.pack(fill="x", padx=5, pady=0)
+        self.header_frame.pack_propagate(False)
+
+        header_inner = ctk.CTkFrame(self.header_frame, fg_color="transparent")
+        header_inner.pack(fill="both", expand=True, padx=5, pady=8)
+
+        for name, width in self.columns:
+            col_frame = ctk.CTkFrame(header_inner, fg_color="transparent", width=width)
+            col_frame.pack(side="left", padx=8)
+            col_frame.pack_propagate(False)
+            ctk.CTkLabel(
+                col_frame, text=name,
+                font=ctk.CTkFont(size=12, weight="bold"), text_color="#64748B", anchor="w"
+            ).pack(side="left", fill="both", expand=True)
+
+        # Separador
+        separator = ctk.CTkFrame(self.table_content_frame, fg_color="#E2E8F0", height=1)
+        separator.pack(fill="x", padx=5)
+
+        # Frame para las filas
+        self.rows_container = ctk.CTkFrame(self.table_content_frame, fg_color="transparent")
+        self.rows_container.pack(fill="both", expand=True)
+
+        # Actualizar scrollregion
         def _on_frame_config(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-        self.rows_container.bind("<Configure>", _on_frame_config)
+            self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+        self.table_content_frame.bind("<Configure>", _on_frame_config)
 
-        # Ajustar el ancho del frame interior: permitir scroll horizontal cuando
-        # el canvas sea más estrecho que el ancho mínimo de la tabla.
+        # Ajustar ancho del contenido
         def _on_canvas_config(event):
             try:
                 new_w = max(event.width, self._table_min_width)
-                canvas.itemconfig(window_id, width=new_w)
+                self.main_canvas.itemconfig(self.canvas_window, width=new_w)
             except Exception:
                 pass
-        canvas.bind("<Configure>", _on_canvas_config)
+        self.main_canvas.bind("<Configure>", _on_canvas_config)
 
-        # Soporte de rueda del ratón (Windows)
+        # Soporte de rueda del ratón
         def _on_mousewheel(event):
-            # event.delta es múltiplo de 120 en Windows
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        # Bind a la ventana para capturar la rueda cuando el cursor esté sobre el canvas
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+            self.main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        self.main_canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
-        # Footer con paginación (inicializar etiqueta de paginación)
+        # Footer con paginación
         footer_frame = ctk.CTkFrame(table_frame, fg_color="transparent", height=40)
         footer_frame.pack(fill="x", padx=15, pady=(0, 15))
         footer_frame.pack_propagate(False)
@@ -322,8 +328,8 @@ class UsersView(BaseView):
         inner_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
         inner_frame.pack(fill="both", expand=True, padx=5, pady=8)
 
-        # Usuario (120px)
-        user_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=100)
+        # Usuario (140px)
+        user_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=140)
         user_frame.pack(side="left", padx=8)
         user_frame.pack_propagate(False)
         ctk.CTkLabel(user_frame, text=user["username"], font=ctk.CTkFont(size=11), text_color="#1E293B", anchor="w").pack(side="left", fill="both", expand=True)
@@ -340,7 +346,7 @@ class UsersView(BaseView):
         email_frame.pack_propagate(False)
         ctk.CTkLabel(email_frame, text=user["email"], font=ctk.CTkFont(size=11), text_color="#1E293B", anchor="w").pack(side="left", fill="both", expand=True)
 
-        # Rol
+        # Rol (120px)
         role_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=120)
         role_frame.pack(side="left", padx=8)
         role_frame.pack_propagate(False)
@@ -359,9 +365,7 @@ class UsersView(BaseView):
             font=ctk.CTkFont(size=10, weight="bold"), text_color=text_color
         ).pack(padx=8, pady=4)
 
-        # (Solo una columna de Rol; la representamos arriba)
-
-        # Estado
+        # Estado (100px)
         status_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=100)
         status_frame.pack(side="left", padx=8)
         status_frame.pack_propagate(False)
@@ -387,65 +391,64 @@ class UsersView(BaseView):
         ultimo_acceso_frame.pack_propagate(False)
         ctk.CTkLabel(ultimo_acceso_frame, text=ultimo_acceso_text, font=ctk.CTkFont(size=11), text_color="#64748B", anchor="w").pack(side="left", fill="both", expand=True)
 
-        # Acciones (Editar, Cambiar Estado, Eliminar)
+        # Acciones (160px) - Ancho suficiente para los 3 botones
         actions_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=160)
-        # Empaquetar a la izquierda para mantener el orden de columnas y permitir scroll horizontal
         actions_frame.pack(side="left", padx=8)
         actions_frame.pack_propagate(False)
 
         # Botón Editar
-        edit_icon = self._load_icon("edit", size=(20, 20))
+        edit_icon = self._load_icon("edit", size=(18, 18))
         if edit_icon:
             edit_btn = ctk.CTkButton(
-                actions_frame, image=edit_icon, text="", width=34, height=34,
+                actions_frame, image=edit_icon, text="", width=32, height=32,
                 fg_color="transparent", hover_color="#E0F7FA",
                 corner_radius=6,
                 command=lambda u=user: self.edit_user(u)
             )
         else:
             edit_btn = ctk.CTkButton(
-                actions_frame, text="✏️", width=34, height=34,
+                actions_frame, text="✏️", width=32, height=32,
                 fg_color="transparent", hover_color="#E0F7FA",
                 corner_radius=6,
                 command=lambda u=user: self.edit_user(u)
             )
-        edit_btn.pack(side="left", padx=(4, 6))
+        edit_btn.pack(side="left", padx=3)
 
-        # Botón Cambiar Estado (usamos icono genérico 'low_stock' si existe)
-        status_icon = self._load_icon("low_stock", size=(20, 20))
+        # Botón Cambiar Estado
+        status_icon = self._load_icon("low_stock", size=(18, 18))
         if status_icon:
             status_btn = ctk.CTkButton(
-                actions_frame, image=status_icon, text="", width=34, height=34,
+                actions_frame, image=status_icon, text="", width=32, height=32,
                 fg_color="transparent", hover_color="#E0F7FA",
                 corner_radius=6,
                 command=lambda u=user: self.toggle_user_status(u)
             )
         else:
             status_btn = ctk.CTkButton(
-                actions_frame, text="🔄", width=34, height=34,
+                actions_frame, text="🔄", width=32, height=32,
                 fg_color="transparent", hover_color="#E0F7FA",
                 corner_radius=6,
                 command=lambda u=user: self.toggle_user_status(u)
             )
-        status_btn.pack(side="left", padx=(0, 6))
+        status_btn.pack(side="left", padx=3)
 
         # Botón Eliminar
-        delete_icon = self._load_icon("delete", size=(20, 20))
+        delete_icon = self._load_icon("delete", size=(18, 18))
         if delete_icon:
             delete_btn = ctk.CTkButton(
-                actions_frame, image=delete_icon, text="", width=34, height=34,
+                actions_frame, image=delete_icon, text="", width=32, height=32,
                 fg_color="transparent", hover_color="#FEE2E2",
                 corner_radius=6,
                 command=lambda u=user: self.delete_user(u)
             )
         else:
             delete_btn = ctk.CTkButton(
-                actions_frame, text="🗑️", width=34, height=34,
+                actions_frame, text="🗑️", width=32, height=32,
                 fg_color="transparent", hover_color="#FEE2E2",
                 corner_radius=6,
                 command=lambda u=user: self.delete_user(u)
             )
-        delete_btn.pack(side="left", padx=(0, 4))
+        delete_btn.pack(side="left", padx=3)
 
     def create_roles_description(self, parent):
         """Crea la descripción de los roles (Administrador y Empleado)."""
@@ -892,39 +895,69 @@ class UsersView(BaseView):
 
     def toggle_user_status(self, user):
         """Cambia el estado de un usuario (Activo/Inactivo)."""
-        new_status = "Inactivo" if user["estado"] == "Activo" else "Activo"
-        confirmed = messagebox.askyesno(
-            "Confirmar Cambio de Estado",
-            f"¿Está seguro de cambiar el estado del usuario '{user['nombre']}' a {new_status}?\n\nEsta acción puede afectar su acceso al sistema."
-        )
-        if confirmed:
-            success, message = self.controller.change_user_status(user['id'], new_status == "Activo")
-            if success:
-                Logger.success(f"Estado del usuario {user['id']} cambiado a {new_status}", "USERS_VIEW")
-                # Refrescar la lista de usuarios
-                self.load_users()
-                # Mostrar mensaje de éxito
-                self.show_message(f"Estado del usuario '{user['nombre']}' actualizado a {new_status}.", "success")
-            else:
-                Logger.error(f"Error al cambiar estado del usuario {user['id']}: {message}", "USERS_VIEW")
-                self.show_message(f"Error al cambiar estado: {message}", "error")
+        try:
+            new_status = "Inactivo" if user["estado"] == "Activo" else "Activo"
+            confirmed = messagebox.askyesno(
+                "Confirmar Cambio de Estado",
+                f"¿Está seguro de cambiar el estado del usuario '{user['nombre']}' a {new_status}?\n\nEsta acción puede afectar su acceso al sistema."
+            )
+            if confirmed:
+                success, message = self.controller.change_user_status(user['id'], new_status == "Activo")
+                if success:
+                    Logger.success(f"Estado del usuario {user['id']} cambiado a {new_status}", "USERS_VIEW")
+                    # Refrescar la lista de usuarios
+                    self.load_users()
+                    # Mostrar mensaje de éxito
+                    self.show_message(f"Estado del usuario '{user['nombre']}' actualizado a {new_status}.", "success")
+                else:
+                    Logger.error(f"Error al cambiar estado del usuario {user['id']}: {message}", "USERS_VIEW")
+                    self.show_message(f"Error al cambiar estado: {message}", "error")
+        except Exception as e:
+            Logger.log_error_exception(e, "USERS_VIEW")
+            self.show_message(f"Error inesperado al cambiar estado: {str(e)}", "error")
 
     def delete_user(self, user):
         """Acción para eliminar un usuario."""
-        from tkinter import messagebox
-        confirmed = messagebox.askyesno(
-            "Confirmar Eliminación",
-            f"¿Está seguro de eliminar el usuario '{user['nombre']}'?\n\nEsta acción no se puede deshacer."
-        )
-        if confirmed:
-            success, message = self.controller.delete_user(user['id'])
-            if success:
-                Logger.success(f"Usuario {user['id']} eliminado", "USERS_VIEW")
-                # Refrescar la lista de usuarios
-                self.load_users()
-                # Mostrar mensaje de éxito
-                self.show_message("Usuario eliminado correctamente", "success")
-            else:
-                Logger.error(f"Error al eliminar usuario {user['id']}: {message}", "USERS_VIEW")
-                self.show_message(f"Error al eliminar: {message}", "error")
+        try:
+            # Validar que user tiene los datos necesarios
+            if not user or 'id' not in user or 'nombre' not in user:
+                self.show_message("Error: Datos del usuario inválidos", "error")
+                return
+            
+            confirmed = messagebox.askyesno(
+                "Confirmar Eliminación",
+                f"¿Está seguro de eliminar el usuario '{user['nombre']}'?\n\nEsta acción no se puede deshacer."
+            )
+            
+            if confirmed:
+                print(f"[DEBUG] Eliminando usuario ID: {user['id']}, nombre: {user['nombre']}")
+                success, message = self.controller.delete_user(user['id'])
+                print(f"[DEBUG] Resultado: success={success}, message={message}")
+                
+                if success:
+                    Logger.success(f"Usuario {user['id']} eliminado", "USERS_VIEW")
+                    # Refrescar lista de usuarios
+                    self.load_users()
+                    # Refrescar resumen de usuarios
+                    summary = self.controller.get_users_summary()
+                    self.update_summary_cards(summary)
+                    # Mostrar mensaje de éxito
+                    self.show_message("Usuario eliminado correctamente", "success")
+                else:
+                    Logger.error(f"Error al eliminar usuario {user['id']}: {message}", "USERS_VIEW")
+                    self.show_message(f"Error al eliminar: {message}", "error")
+        except Exception as e:
+            print(f"[DEBUG] Exception en delete_user: {e}")
+            Logger.log_error_exception(e, "USERS_VIEW")
+            self.show_message(f"Error inesperado al eliminar: {str(e)}", "error")
 
+    def get_notification_count(self):
+        """Obtiene el número de notificaciones no leídas."""
+        try:
+            from model.alert_model import AlertModel
+            alert_model = AlertModel()
+            unread_alerts = alert_model.get_unread_alerts()
+            return len(unread_alerts) if unread_alerts else 0
+        except Exception as e:
+            print(f"Error al contar notificaciones: {e}")
+            return 0

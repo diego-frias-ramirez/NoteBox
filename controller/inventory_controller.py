@@ -16,6 +16,7 @@ from model.category_model import CategoryModel
 from model.report_model import ReportModel
 from utils.logger import Logger
 from utils.validators import Validators
+from utils.alerts import alert_manager
 from datetime import datetime
 
 class InventoryController:
@@ -131,6 +132,11 @@ class InventoryController:
                     Logger.log_user_action("CREAR_PRODUCTO", self.current_user['nombre'], details=f"ID: {product_id}, Nombre: {data['nombre']}")
                 # Devolver el producto recién creado para actualizar la vista
                 created_product = self.get_product_by_id(product_id)
+                
+                # Verificar alertas de stock
+                if created_product:
+                    alert_manager.generate_stock_alert(created_product)
+                    
                 return True, created_product
             else:
                 error_msg = "No se pudo crear el producto en la base de datos"
@@ -167,11 +173,14 @@ class InventoryController:
                 
                 # Devolver el producto actualizado para actualizar la vista
                 updated_product = self.get_product_by_id(product_id)
+                
+                # Verificar alertas de stock
+                if updated_product:
+                    alert_manager.generate_stock_alert(updated_product)
+                    
                 return True, updated_product
             else:
-                error_msg = f"No se pudo actualizar el producto ID {product_id}"
-                Logger.error(error_msg, "INVENTORY_CONTROLLER")
-                return False, error_msg
+                return False, "No se pudo actualizar el producto"
         except Exception as e:
             Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return False, str(e)
@@ -225,7 +234,6 @@ class InventoryController:
             product = self.get_product_by_id(product_id)
             if not product:
                 return False, "Producto no encontrado"
-            
             # Para salidas, validar stock suficiente
             if movement_type == 'Salida' and (product['stock'] - quantity) < 0:
                 return False, f"Stock insuficiente. Disponible: {product['stock']}, Solicitado: {quantity}"
@@ -250,7 +258,21 @@ class InventoryController:
                         details=f"Tipo: {movement_type}, Producto: {product['nombre']}, Cantidad: {quantity}"
                     )
                 
+                # Verificar alertas de stock después del movimiento
+                updated_product = self.get_product_by_id(product_id)
+                if updated_product:
+                    # Generar notificación de movimiento
+                    alert_manager.generate_movement_alert(
+                        product=updated_product,
+                        movement_type=movement_type,
+                        quantity=quantity,
+                        reason=reason
+                    )
+                    # Verificar alertas de stock bajo/agotado
+                    alert_manager.generate_stock_alert(updated_product)
+                    
                 return True, f"Movimiento de {movement_type.lower()} registrado correctamente"
+
             else:
                 return False, "No se pudo registrar el movimiento"
                 

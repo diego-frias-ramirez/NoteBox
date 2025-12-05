@@ -155,3 +155,17 @@ class MovementsController:
             Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
             return []
 
+    def get_all_movements(self):
+        """
+        Obtiene todos los movimientos sin paginación.
+        Returns:
+            list: Todos los movimientos.
+        """
+        try:
+            movements = self.movement_model.get_all_movements()
+            Logger.info(f"Movimientos completos obtenidos: {len(movements)}", "MOVEMENTS_CONTROLLER")
+            return movements
+        except Exception as e:
+            Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
+            return []
+

@@ -6,17 +6,20 @@ Sistema de alertas y notificaciones
 from tkinter import messagebox
 import json
 from assets.styles.colors import Colors
-from model.alert_model import AlertModel # Importar el modelo de alertas
+from model.alert_model import AlertModel
+from utils.logger import Logger
 
 class AlertManager:
     """Clase para gestionar las alertas del sistema."""
 
     # Cargar configuración
-    with open('../config/app_settings.json', 'r', encoding='utf-8') as f:
+    import os
+    _config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config', 'app_settings.json')
+    with open(_config_path, 'r', encoding='utf-8') as f:
         settings = json.load(f)
 
     def __init__(self):
-        self.alert_model = AlertModel() # Instanciar el modelo de alertas
+        self.alert_model = AlertModel()
 
     def show_info(self, title, message):
         """Muestra un mensaje informativo"""
@@ -142,47 +145,53 @@ class AlertManager:
 
     def ask_custom(self, title, message, options=("Sí", "No")):
         """Diálogo personalizado con opciones"""
-        # Por simplicidad, usa askyesno
-        # En una implementación más completa, se podría crear un diálogo personalizado
         return messagebox.askyesno(title, message)
 
     # --- NUEVAS FUNCIONES PARA INTERACTUAR CON EL MODELO ---
     def generate_stock_alert(self, product):
         """
         Genera una alerta de stock bajo o agotado y la guarda en la base de datos.
-        Utiliza el AlertModel para interactuar con la base de datos.
+        Verifica si ya existe una alerta similar antes de crear una nueva.
+        Resuelve alertas anteriores si el stock se ha normalizado.
 
         Args:
             product (dict): Diccionario con datos del producto (id, nombre, stock, stock_minimo).
 
         Returns:
-            int: ID de la alerta creada, o None si falla.
+            int: ID de la alerta creada, o None si falla o ya existe.
         """
         tipo_alerta = None
         descripcion = ""
+        stock_minimo = product.get('stock_minimo', 10)
 
         if product.get('stock', 0) <= 0:
             tipo_alerta = 'Producto agotado'
             descripcion = f"El producto '{product['nombre']}' se ha agotado completamente."
-        elif product.get('stock', 0) <= product.get('stock_minimo', 10): # Usar stock_minimo del producto o un valor por defecto
+        elif product.get('stock', 0) <= stock_minimo:
             tipo_alerta = 'Stock bajo'
-            descripcion = f"El producto '{product['nombre']}' tiene solo {product['stock']} unidades disponibles (mínimo: {product.get('stock_minimo', 10)})."
+            descripcion = f"El producto '{product['nombre']}' tiene solo {product['stock']} unidades disponibles (mínimo: {stock_minimo})."
+        else:
+            # El stock está bien, resolver alertas anteriores si existen
+            resolved = self.alert_model.mark_stock_alerts_as_resolved(product['id'])
+            if resolved > 0:
+                Logger.info(f"Stock normalizado para producto '{product['nombre']}'. {resolved} alertas resueltas.", "ALERT_MANAGER")
+            return None
 
         if tipo_alerta:
-            # Crear alerta en la base de datos usando el modelo
-            alert_id = self.alert_model.create_alert(tipo=tipo_alerta, producto_id=product['id'], descripcion=descripcion)
-            if alert_id:
-                # Opcional: Mostrar alerta visual también
-                if tipo_alerta == 'Stock bajo':
-                    self.stock_alert(product['nombre'], product['stock'], product.get('stock_minimo', 10))
-            return alert_id
+            # Verificar si ya existe una alerta similar en las últimas 24 horas
+            if not self.alert_model.check_existing_alert(tipo_alerta, product['id'], hours=24):
+                # Crear alerta en la base de datos usando el modelo
+                alert_id = self.alert_model.create_alert(tipo=tipo_alerta, producto_id=product['id'], descripcion=descripcion)
+                return alert_id
+            else:
+                # Ya existe una alerta similar reciente, no crear duplicado
+                return None
 
-        return None # No se generó alerta
+        return None  # No se generó alerta
 
     def generate_inactive_product_alert(self, product):
         """
         Genera una alerta de producto sin movimiento y la guarda en la base de datos.
-        Utiliza el AlertModel para interactuar con la base de datos.
 
         Args:
             product (dict): Diccionario con datos del producto (id, nombre, dias_sin_movimiento).
@@ -194,16 +203,46 @@ class AlertManager:
             tipo_alerta = 'Sin movimiento'
             descripcion = f"El producto '{product['nombre']}' lleva {product['dias_sin_movimiento']} días sin rotación."
 
-            # Crear alerta en la base de datos usando el modelo
-            alert_id = self.alert_model.create_alert(tipo=tipo_alerta, producto_id=product['id'], descripcion=descripcion)
-            if alert_id:
-                # Opcional: Mostrar alerta visual también
-                # self.show_warning("Alerta de Producto Inactivo", descripcion) # Ejemplo de alerta visual
-                pass # No se requiere alerta visual inmediata aquí, se verá en el dashboard o lista de alertas
+            # Verificar si ya existe una alerta similar en las últimas 48 horas
+            if not self.alert_model.check_existing_alert(tipo_alerta, product['id'], hours=48):
+                # Crear alerta en la base de datos usando el modelo
+                alert_id = self.alert_model.create_alert(tipo=tipo_alerta, producto_id=product['id'], descripcion=descripcion)
+                return alert_id
 
-            return alert_id
+        return None  # No se generó alerta
 
-        return None # No se generó alerta
+    def generate_movement_alert(self, product, movement_type, quantity, reason):
+        """
+        Genera una notificación de movimiento de inventario (entrada o salida).
+        
+        Args:
+            product (dict): Diccionario con datos del producto (id, nombre, stock).
+            movement_type (str): Tipo de movimiento ('Entrada' o 'Salida').
+            quantity (int): Cantidad del movimiento.
+            reason (str): Razón del movimiento.
+        
+        Returns:
+            int: ID de la alerta creada, o None si falla.
+        """
+        # Determinar el tipo de alerta según el movimiento
+        if movement_type == 'Entrada':
+            tipo_alerta = 'Entrada de inventario'
+            icono = '📥'
+        else:  # Salida
+            tipo_alerta = 'Salida de inventario'
+            icono = '📤'
+        
+        # Crear descripción detallada
+        descripcion = f"{icono} {movement_type} de {quantity} unidades. Stock actual: {product.get('stock', 0)}. Motivo: {reason}"
+        
+        # Crear alerta en la base de datos
+        alert_id = self.alert_model.create_alert(
+            tipo=tipo_alerta,
+            producto_id=product['id'],
+            descripcion=descripcion
+        )
+        
+        return alert_id
 
     def get_active_alerts(self):
         """
@@ -216,6 +255,16 @@ class AlertManager:
         Marca una alerta como leída en la base de datos usando el modelo.
         """
         return self.alert_model.mark_alert_as_read(alert_id)
+    
+    def get_unread_count(self):
+        """
+        Obtiene el número de alertas no leídas.
+        
+        Returns:
+            int: Número de alertas no leídas.
+        """
+        unread = self.alert_model.get_unread_alerts()
+        return len(unread) if unread else 0
 
 # Instancia global del gestor de alertas
 alert_manager = AlertManager()

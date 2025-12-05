@@ -129,7 +129,7 @@ class UsersController:
 
     def delete_user(self, user_id):
         """
-        Elimina (desactiva) un usuario.
+        Elimina permanentemente un usuario de la base de datos.
         
         Args:
             user_id (int): ID del usuario.
@@ -138,9 +138,9 @@ class UsersController:
             tuple: (bool: éxito, str: mensaje).
         """
         try:
-            success = self.user_model.deactivate_user(user_id) # Asumiendo que tienes este método
+            success = self.user_model.delete_user_permanently(user_id)
             if success:
-                Logger.success(f"Usuario ID {user_id} eliminado (desactivado)", "USERS_CONTROLLER")
+                Logger.success(f"Usuario ID {user_id} eliminado permanentemente", "USERS_CONTROLLER")
                 # Registrar acción
                 if self.current_user:
                     Logger.log_user_action("ELIMINAR_USUARIO", self.current_user['nombre'], details=f"ID: {user_id}")

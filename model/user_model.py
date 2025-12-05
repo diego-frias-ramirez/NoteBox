@@ -25,6 +25,9 @@ class UserModel:
         Returns:
             dict: Datos del usuario si es válido, None si no
         """
+        import hashlib
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        
         query = """
             SELECT id, usuario, nombre, email, rol, estado, ultimo_acceso
             FROM usuarios
@@ -32,7 +35,7 @@ class UserModel:
         """
         
         try:
-            result = Database.execute_query(query, (username, password), fetch=True)
+            result = Database.execute_query(query, (username, hashed_password), fetch=True)
             
             if result:
                 Logger.log_database_operation(
@@ -48,7 +51,7 @@ class UserModel:
                 return None
                 
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return None
     
     @staticmethod
@@ -69,7 +72,7 @@ class UserModel:
             )
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return []
     
     @staticmethod
@@ -88,7 +91,7 @@ class UserModel:
                 return result[0]
             return None
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return None
     
     @staticmethod
@@ -112,7 +115,7 @@ class UserModel:
                 return True
             return False
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return False
     
     @staticmethod
@@ -129,7 +132,7 @@ class UserModel:
             result = Database.execute_query(query, fetch=True)
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return []
     
     @staticmethod
@@ -148,7 +151,7 @@ class UserModel:
             result = Database.execute_query(query, fetch=True)
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return []
 
     def get_users(self, search="", role=None, limit=5, offset=0):
@@ -179,7 +182,7 @@ class UserModel:
             Logger.info(f"Usuarios obtenidos: {len(result) if result else 0}", "USER_MODEL")
             return result if result else []
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return []
 
     def get_total_users(self, search="", role=None):
@@ -204,7 +207,7 @@ class UserModel:
             Logger.info(f"Total de usuarios: {total}", "USER_MODEL")
             return total
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return 0
 
     def get_users_count_by_role(self, role):
@@ -218,7 +221,7 @@ class UserModel:
             Logger.info(f"Usuarios con rol '{role}': {count}", "USER_MODEL")
             return count
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return 0
 
     def get_user_by_id(self, user_id):
@@ -234,7 +237,7 @@ class UserModel:
                 return result[0]
             return None
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return None
 
     def create_user(self, nombre, username, email, password, rol):
@@ -257,7 +260,7 @@ class UserModel:
                 return user_id
             return None
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return None
 
     def update_user(self, user_id, **kwargs):
@@ -273,22 +276,64 @@ class UserModel:
         params = list(updates.values()) + [user_id]
         
         try:
-            Database.execute_query(query, params=params)
-            Logger.success(f"Usuario {user_id} actualizado", "USER_MODEL")
-            return True
+            result = Database.execute_query(query, params=params)
+            if result and result > 0:
+                Logger.success(f"Usuario {user_id} actualizado", "USER_MODEL")
+                return True
+            else:
+                Logger.warning(f"Usuario {user_id} no encontrado para actualizar", "USER_MODEL")
+                return False
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return False
 
     def deactivate_user(self, user_id):
         """Desactiva un usuario (lo marca como Inactivo)."""
-        query = "UPDATE usuarios SET estado = 'Inactivo' WHERE id = %s"
         try:
-            Database.execute_query(query, params=(user_id,))
-            Logger.success(f"Usuario {user_id} desactivado", "USER_MODEL")
-            return True
+            # Primero verificar el estado actual
+            current_user = self.get_user_by_id(user_id)
+            if not current_user:
+                Logger.warning(f"Usuario {user_id} no encontrado", "USER_MODEL")
+                return False
+            
+            # Si ya está inactivo, no hacer nada pero retornar True
+            if current_user['estado'] == 'Inactivo':
+                Logger.info(f"Usuario {user_id} ya está inactivo", "USER_MODEL")
+                return True
+            
+            # Actualizar a Inactivo
+            query = "UPDATE usuarios SET estado = 'Inactivo' WHERE id = %s"
+            result = Database.execute_query(query, params=(user_id,))
+            if result and result > 0:
+                Logger.success(f"Usuario {user_id} desactivado", "USER_MODEL")
+                return True
+            else:
+                Logger.warning(f"No se pudo actualizar el usuario {user_id}", "USER_MODEL")
+                return False
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
+            return False
+
+    def delete_user_permanently(self, user_id):
+        """Elimina permanentemente un usuario de la base de datos."""
+        try:
+            # Verificar que existe
+            current_user = self.get_user_by_id(user_id)
+            if not current_user:
+                Logger.warning(f"Usuario {user_id} no encontrado para eliminar", "USER_MODEL")
+                return False
+            
+            # Eliminar de la BD
+            query = "DELETE FROM usuarios WHERE id = %s"
+            result = Database.execute_query(query, params=(user_id,))
+            if result and result > 0:
+                Logger.success(f"Usuario {user_id} eliminado permanentemente", "USER_MODEL")
+                return True
+            else:
+                Logger.warning(f"No se pudo eliminar el usuario {user_id}", "USER_MODEL")
+                return False
+        except Exception as e:
+            Logger.log_error_exception(e, "USER_MODEL")
             return False
 
     def change_user_status(self, user_id, is_active):
@@ -296,9 +341,13 @@ class UserModel:
         status = 'Activo' if is_active else 'Inactivo'
         query = "UPDATE usuarios SET estado = %s WHERE id = %s"
         try:
-            Database.execute_query(query, params=(status, user_id))
-            Logger.success(f"Usuario {user_id} estado cambiado a {status}", "USER_MODEL")
-            return True
+            result = Database.execute_query(query, params=(status, user_id))
+            if result and result > 0:
+                Logger.success(f"Usuario {user_id} estado cambiado a {status}", "USER_MODEL")
+                return True
+            else:
+                Logger.warning(f"Usuario {user_id} no encontrado para cambiar estado", "USER_MODEL")
+                return False
         except Exception as e:
-            Logger.error_exception(e, "USER_MODEL")
+            Logger.log_error_exception(e, "USER_MODEL")
             return False
