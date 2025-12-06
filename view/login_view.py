@@ -32,6 +32,15 @@ class NoteBoxLogin(ctk.CTk):
         
         # Crear UI
         self.create_widgets()
+
+        self.load_user_on_start()
+
+    def load_user_on_start(self):
+        remembered_user = self.controller.load_remembered_user()
+        if remembered_user:
+            self.user_entry.insert(0, remembered_user)
+            self.remember_var.set(True)
+
     
     def center_window(self):
         self.update_idletasks()
