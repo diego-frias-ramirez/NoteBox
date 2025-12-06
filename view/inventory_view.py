@@ -9,6 +9,7 @@ import os
 
 from components.base_view import BaseView
 from controller.inventory_controller import InventoryController
+from utils.alerts import alert_manager
 from utils.logger import Logger
 from utils.helpers import Helpers
 
@@ -635,10 +636,41 @@ class InventoryView(BaseView):
 
             Logger.info(f"Productos cargados: {len(products)} en página {self.current_page} de {total}", "INVENTORY_VIEW")
 
+            # Generar alertas de stock automáticamente
+            self.generate_stock_alerts(products)
+
         except Exception as e:
             Logger.log_error_exception(e, "INVENTORY_VIEW")
-            # Opcional: Mostrar un mensaje de error al usuario
-            # self.show_message("Error al cargar productos", "error")
+            # Usar alert_manager para mostrar error
+            alert_manager.show_error(
+                "Error al cargar productos", 
+                f"No se pudieron cargar los productos.\nError: {str(e)}",
+                parent=self
+            )
+
+    def generate_stock_alerts(self, products):
+        """Genera alertas automáticas para productos con stock bajo o agotado."""
+        try:
+            low_stock_count = 0
+            no_stock_count = 0
+            
+            for product in products:
+                # Generar alerta de stock
+                alert_id = alert_manager.generate_stock_alert(product)
+                if alert_id:
+                    if product.get('stock', 0) <= 0:
+                        no_stock_count += 1
+                    else:
+                        low_stock_count += 1
+            
+            # Mostrar resumen si hay alertas
+            if low_stock_count > 0 or no_stock_count > 0:
+                total = len(products)
+                low_rotation = alert_manager.get_low_rotation_alerts_count(products)
+                alert_manager.show_stock_summary(total, low_stock_count, no_stock_count, low_rotation, self)
+                
+        except Exception as e:
+            Logger.error(f"Error generando alertas de stock: {str(e)}", "INVENTORY_VIEW")
 
     def add_product(self):
         """Acción para añadir un producto (abre un diálogo)."""
@@ -650,92 +682,87 @@ class InventoryView(BaseView):
 
     def delete_product(self, product):
         """Acción para eliminar un producto."""
-        from tkinter import messagebox
-        confirmed = messagebox.askyesno(
-            "Confirmar Eliminación",
-            f"¿Está seguro de eliminar el producto '{product['nombre']}'?\n\nEsta acción no se puede deshacer."
-        )
+        # Usar alert_manager para confirmar eliminación
+        confirmed = alert_manager.confirm_delete(f"el producto '{product['nombre']}'", self)
+        
         if confirmed:
             success, message = self.controller.delete_product(product['id'])
             if success:
                 Logger.success(f"Producto {product['id']} eliminado", "INVENTORY_VIEW")
                 # Refrescar la lista de productos
                 self.load_products()
-                # Mostrar mensaje de éxito
-                self.show_message("Producto eliminado correctamente", "success")
+                # Mostrar mensaje de éxito usando alert_manager
+                alert_manager.success_delete(self)
             else:
                 Logger.error(f"Error al eliminar producto {product['id']}: {message}", "INVENTORY_VIEW")
-                self.show_message(f"Error al eliminar: {message}", "error")
+                # Mostrar mensaje de error usando alert_manager
+                alert_manager.error_delete(self)
 
     def view_product_details(self, product):
-        """Acción para ver detalles de un producto (opcional)."""
-        from tkinter import messagebox
-        messagebox.showinfo("Detalles del Producto", f"ID: {product['id']}\nNombre: {product['nombre']}\nCategoría: {self.categories.get(product.get('categoria_id'), {}).get('nombre', 'Sin Categoría')}\nStock: {product['stock']}\nPrecio: {product['precio']}\nEstado: {product['estado']}")
+        """Acción para ver detalles de un producto."""
+        message = f"=== DETALLES DEL PRODUCTO ===\n\n"
+        message += f"📋 ID: {product['id']}\n"
+        message += f"📦 Nombre: {product['nombre']}\n"
+        message += f"🏷️  Categoría: {self.categories.get(product.get('categoria_id'), {}).get('nombre', 'Sin Categoría')}\n"
+        message += f"📊 Stock: {product['stock']} unidades\n"
+        message += f"💰 Precio: {Helpers.format_currency(product['precio'])}\n"
+        message += f"📈 Estado: {product['estado']}\n"
+        
+        if product.get('descripcion'):
+            message += f"\n📝 Descripción:\n{product['descripcion']}"
+        
+        if product.get('codigo'):
+            message += f"\n🔖 Código: {product['codigo']}"
+        
+        # Mostrar usando alert_manager con ventana personalizada
+        alert_manager.show_info("Detalles del Producto", message, self)
 
     def export_inventory(self):
         """Exporta el inventario."""
-        success, message = self.controller.export_inventory(format="csv", category_id=self.filter_category_id, search_query=self.search_query)
+        # Confirmar exportación
+        confirmed = alert_manager.confirm(
+            "Confirmar Exportación",
+            "¿Desea exportar el inventario actual?\n\nSe generará un archivo CSV con los productos filtrados.",
+            self
+        )
+        
+        if not confirmed:
+            return
+        
+        success, message = self.controller.export_inventory(
+            format="csv", 
+            category_id=self.filter_category_id, 
+            search_query=self.search_query
+        )
+        
         if success:
             Logger.success(f"Inventario exportado a: {message}", "INVENTORY_VIEW")
-            self.show_message(f"Exportado a: {message}", "success")
+            # Usar alert_manager para mostrar éxito
+            alert_manager.show_success(
+                "Exportación Exitosa", 
+                f"El inventario se exportó correctamente.\n\nUbicación: {message}",
+                self
+            )
         else:
             Logger.error(f"Error al exportar inventario: {message}", "INVENTORY_VIEW")
-            self.show_message(f"Error al exportar: {message}", "error")
+            # Usar alert_manager para mostrar error
+            alert_manager.show_error(
+                "Error al Exportar", 
+                f"No se pudo exportar el inventario.\nError: {message}",
+                self
+            )
 
     def show_message(self, message, msg_type="info"):
         """Muestra un mensaje temporal al usuario."""
-        colors = {"info": "#3B82F6", "success": "#10B981", "warning": "#F59E0B", "error": "#EF4444"}
-        color = colors.get(msg_type, "#3B82F6")
-
-        popup = ctk.CTkToplevel(self)
-        popup.title("")
-        popup.geometry("300x100")
-        popup.resizable(False, False)
-        popup.configure(fg_color="#FFFFFF")
-        popup.transient(self)
-        popup.grab_set()
-
-        # Centrar popup
-        popup.update_idletasks()
-        x = self.winfo_x() + (self.winfo_width() // 2) - (300 // 2)
-        y = self.winfo_y() + (self.winfo_height() // 2) - (100 // 2)
-        popup.geometry(f"300x100+{x}+{y}")
-
-        # Frame para contenido
-        content_frame = ctk.CTkFrame(popup, fg_color="transparent")
-        content_frame.pack(fill="both", expand=True, padx=20, pady=10)
-
-        # Icono según tipo de mensaje
-        icon_path = ""
+        # Redirigir a alert_manager según el tipo de mensaje
         if msg_type == "success":
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert_info.png")
+            alert_manager.show_success("Éxito", message, self)
         elif msg_type == "error":
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert.png")
+            alert_manager.show_error("Error", message, self)
         elif msg_type == "warning":
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert_yellow.png")
-        else:  # info
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "notifications.png")
-
-        try:
-            img = Image.open(icon_path)
-            img = img.resize((20, 20), Image.LANCZOS)
-            icon_img = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
-            icon_label = ctk.CTkLabel(content_frame, image=icon_img, text="")
-            icon_label.pack(side="left", padx=(0, 10))
-        except:
-            # Fallback a emoji si no se puede cargar el ícono
-            fallback_emoji = {"info": "ℹ️", "success": "✅", "warning": "⚠️", "error": "❌"}
-            ctk.CTkLabel(content_frame, text=fallback_emoji.get(msg_type, "ℹ️"), font=ctk.CTkFont(size=16)).pack(side="left", padx=(0, 10))
-
-        # Texto del mensaje
-        label = ctk.CTkLabel(
-            content_frame, text=message,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color=color
-        )
-        label.pack(side="left", expand=True)
-
-        popup.after(3000, popup.destroy)
+            alert_manager.show_warning("Advertencia", message, self)
+        else:
+            alert_manager.show_info("Información", message, self)
 
     def open_add_product_dialog(self):
         """Abre un diálogo para añadir un nuevo producto."""
@@ -776,13 +803,13 @@ class InventoryView(BaseView):
 
         # Campos del formulario
         fields = [
-            ("Nombre del Producto:", "name_entry", "Ingrese el nombre"),
-            ("Código del Producto:", "code_entry", "Ingrese el código"),
+            ("Nombre del Producto:*", "name_entry", "Ingrese el nombre"),
+            ("Código del Producto:*", "code_entry", "Ingrese el código"),
             ("Descripción:", "description_entry", ""),
-            ("Categoría:", "category_combo", ""),
-            ("Stock Actual:", "stock_entry", "Ingrese el stock"),
-            ("Stock Mínimo:", "min_stock_entry", "Ingrese el stock mínimo"),
-            ("Precio Unitario:", "price_entry", "Ingrese el precio")
+            ("Categoría:*", "category_combo", ""),
+            ("Stock Actual:*", "stock_entry", "Ingrese el stock"),
+            ("Stock Mínimo:*", "min_stock_entry", "Ingrese el stock mínimo"),
+            ("Precio Unitario:*", "price_entry", "Ingrese el precio")
         ]
 
         for label_text, var_name, placeholder in fields:
@@ -806,7 +833,11 @@ class InventoryView(BaseView):
         # Cargar categorías en el combo box
         categories_list = list(self.categories.values())
         category_names = [cat['nombre'] for cat in categories_list]
-        self.category_combo.configure(values=category_names)
+        if category_names:
+            self.category_combo.configure(values=category_names)
+        else:
+            self.category_combo.configure(values=["No hay categorías disponibles"])
+            self.category_combo.set("No hay categorías disponibles")
 
         # Botones de acción
         buttons_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
@@ -823,16 +854,47 @@ class InventoryView(BaseView):
             price_str = self.price_entry.get().strip()
 
             # Validación básica
-            if not name or not code or not category_name or not stock_str or not min_stock_str or not price_str:
-                self.show_message("Por favor, complete todos los campos.", "error")
+            required_fields = [
+                ("nombre", name),
+                ("código", code),
+                ("categoría", category_name),
+                ("stock", stock_str),
+                ("stock mínimo", min_stock_str),
+                ("precio", price_str)
+            ]
+            
+            missing_fields = []
+            for field_name, field_value in required_fields:
+                if not field_value or field_value == "Seleccione una categoría" or field_value == "No hay categorías disponibles":
+                    missing_fields.append(field_name)
+            
+            if missing_fields:
+                alert_manager.validation_error(
+                    "Por favor complete los siguientes campos obligatorios:\n\n" + 
+                    "\n".join([f"• {field}" for field in missing_fields]),
+                    self
+                )
                 return
 
             try:
                 stock = int(stock_str)
                 min_stock = int(min_stock_str)
                 price = float(price_str)
-            except ValueError:
-                self.show_message("Stock, stock mínimo y precio deben ser números válidos.", "error")
+                
+                if stock < 0 or min_stock < 0 or price < 0:
+                    raise ValueError("Los valores no pueden ser negativos")
+                    
+            except ValueError as e:
+                if "negativos" in str(e):
+                    alert_manager.validation_error(
+                        "Los valores de stock y precio deben ser números positivos.",
+                        self
+                    )
+                else:
+                    alert_manager.validation_error(
+                        "Stock, stock mínimo y precio deben ser números válidos.",
+                        self
+                    )
                 return
 
             # Obtener el ID de la categoría
@@ -843,7 +905,7 @@ class InventoryView(BaseView):
                     break
 
             if category_id is None:
-                self.show_message("Categoría no válida.", "error")
+                alert_manager.show_error("Error de Categoría", "Categoría no válida.", self)
                 return
 
             # Preparar datos para enviar al controlador
@@ -868,10 +930,19 @@ class InventoryView(BaseView):
                 # Recargar la lista de productos
                 self.load_products()
                 # Mostrar mensaje de éxito
-                self.show_message(f"Producto '{name}' creado correctamente.", "success")
+                alert_manager.success_save(self)
+                
+                # Generar alerta de movimiento (entrada)
+                alert_manager.generate_movement_alert(
+                    result,
+                    "Entrada",
+                    stock,
+                    "Creación de nuevo producto"
+                )
+                
             else:
                 Logger.error(f"Error al crear producto '{name}': {result}", "INVENTORY_VIEW")
-                self.show_message(f"Error al crear: {result}", "error")
+                alert_manager.show_error("Error al Crear", f"No se pudo crear el producto.\nError: {result}", self)
 
         # Botón Guardar
         save_btn = ctk.CTkButton(
@@ -928,13 +999,13 @@ class InventoryView(BaseView):
 
         # Campos del formulario
         fields = [
-            ("Nombre del Producto:", "name_entry", "Ingrese el nombre"),
-            ("Código del Producto:", "code_entry", "Ingrese el código"),
+            ("Nombre del Producto:*", "name_entry", "Ingrese el nombre"),
+            ("Código del Producto:*", "code_entry", "Ingrese el código"),
             ("Descripción:", "description_entry", ""),
-            ("Categoría:", "category_combo", ""),
-            ("Stock Actual:", "stock_entry", "Ingrese el stock"),
-            ("Stock Mínimo:", "min_stock_entry", "Ingrese el stock mínimo"),
-            ("Precio Unitario:", "price_entry", "Ingrese el precio")
+            ("Categoría:*", "category_combo", ""),
+            ("Stock Actual:*", "stock_entry", "Ingrese el stock"),
+            ("Stock Mínimo:*", "min_stock_entry", "Ingrese el stock mínimo"),
+            ("Precio Unitario:*", "price_entry", "Ingrese el precio")
         ]
 
         for label_text, var_name, placeholder in fields:
@@ -958,7 +1029,11 @@ class InventoryView(BaseView):
         # Cargar categorías en el combo box
         categories_list = list(self.categories.values())
         category_names = [cat['nombre'] for cat in categories_list]
-        self.category_combo.configure(values=category_names)
+        if category_names:
+            self.category_combo.configure(values=category_names)
+        else:
+            self.category_combo.configure(values=["No hay categorías disponibles"])
+            self.category_combo.set("No hay categorías disponibles")
 
         # Seleccionar la categoría actual
         current_category_name = self.categories.get(product.get('categoria_id'), {}).get('nombre', 'Sin Categoría')
@@ -986,16 +1061,47 @@ class InventoryView(BaseView):
             min_stock_str = self.min_stock_entry.get().strip()
             price_str = self.price_entry.get().strip()
 
-            if not name or not code or not category_name or not stock_str or not min_stock_str or not price_str:
-                self.show_message("Por favor, complete todos los campos.", "error")
+            required_fields = [
+                ("nombre", name),
+                ("código", code),
+                ("categoría", category_name),
+                ("stock", stock_str),
+                ("stock mínimo", min_stock_str),
+                ("precio", price_str)
+            ]
+            
+            missing_fields = []
+            for field_name, field_value in required_fields:
+                if not field_value or field_value == "Seleccione una categoría" or field_value == "No hay categorías disponibles":
+                    missing_fields.append(field_name)
+            
+            if missing_fields:
+                alert_manager.validation_error(
+                    "Por favor complete los siguientes campos obligatorios:\n\n" + 
+                    "\n".join([f"• {field}" for field in missing_fields]),
+                    self
+                )
                 return
 
             try:
                 stock = int(stock_str)
                 min_stock = int(min_stock_str)
                 price = float(price_str)
-            except ValueError:
-                self.show_message("Stock, stock mínimo y precio deben ser números válidos.", "error")
+                
+                if stock < 0 or min_stock < 0 or price < 0:
+                    raise ValueError("Los valores no pueden ser negativos")
+                    
+            except ValueError as e:
+                if "negativos" in str(e):
+                    alert_manager.validation_error(
+                        "Los valores de stock y precio deben ser números positivos.",
+                        self
+                    )
+                else:
+                    alert_manager.validation_error(
+                        "Stock, stock mínimo y precio deben ser números válidos.",
+                        self
+                    )
                 return
 
             # Obtener el ID de la categoría
@@ -1006,8 +1112,13 @@ class InventoryView(BaseView):
                     break
 
             if category_id is None:
-                self.show_message("Categoría no válida.", "error")
+                alert_manager.show_error("Error de Categoría", "Categoría no válida.", self)
                 return
+
+            # Calcular diferencia de stock para alerta
+            old_stock = product['stock']
+            stock_difference = stock - old_stock
+            movement_type = "Entrada" if stock_difference > 0 else "Salida" if stock_difference < 0 else None
 
             # Preparar datos para enviar al controlador
             product_data = {
@@ -1031,10 +1142,20 @@ class InventoryView(BaseView):
                 # Recargar la lista de productos
                 self.load_products()
                 # Mostrar mensaje de éxito
-                self.show_message(f"Producto '{name}' actualizado correctamente.", "success")
+                alert_manager.success_update(self)
+                
+                # Generar alerta de movimiento si hubo cambio en el stock
+                if movement_type and stock_difference != 0:
+                    alert_manager.generate_movement_alert(
+                        result,
+                        movement_type,
+                        abs(stock_difference),
+                        f"Actualización de producto: {name}"
+                    )
+                    
             else:
                 Logger.error(f"Error al actualizar producto ID {product['id']}: {result}", "INVENTORY_VIEW")
-                self.show_message(f"Error al actualizar: {result}", "error")
+                alert_manager.show_error("Error al Actualizar", f"No se pudo actualizar el producto.\nError: {result}", self)
 
         # Botón Guardar Cambios
         save_btn = ctk.CTkButton(
@@ -1054,6 +1175,7 @@ class InventoryView(BaseView):
 
     def get_notification_count(self):
         """Obtiene el número de notificaciones no leídas."""
+<<<<<<< HEAD
         try:
             from model.alert_model import AlertModel
             alert_model = AlertModel()
@@ -1063,3 +1185,6 @@ class InventoryView(BaseView):
             from utils.logger import Logger
             Logger.log_error_exception(e, "INVENTORY_VIEW")
             return 0
+=======
+        return alert_manager.get_unread_count()
+>>>>>>> 763a8ee6d664848d90df0a0c30a87f817d9fe02c
