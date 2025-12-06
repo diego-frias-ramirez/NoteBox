@@ -3,13 +3,13 @@ NoteBox - Vista del Módulo de Usuarios (Corregida y Alineada con Figma)
 Ubicación: view/users_view.py
 """
 import tkinter as tk
-from tkinter import messagebox
 import customtkinter as ctk
 from PIL import Image
 import os
 
 from components.base_view import BaseView
 from controller.users_controller import UsersController
+from utils.alerts import alert_manager
 from utils.logger import Logger
 from utils.helpers import Helpers
 
@@ -97,28 +97,47 @@ class UsersView(BaseView):
         search_frame.pack(side="left")
         search_frame.pack_propagate(False)
 
-        ctk.CTkLabel(search_frame, text="🔍", font=ctk.CTkFont(size=16), text_color="#94A3B8").pack(side="left", padx=(18, 10))
+        # Icono de búsqueda
+        search_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "search.png")
+        try:
+            img = Image.open(search_icon_path)
+            img = img.resize((16, 16), Image.LANCZOS)
+            search_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(16, 16))
+            ctk.CTkLabel(search_frame, image=search_icon, text="").pack(side="left", padx=(18, 10))
+        except:
+            ctk.CTkLabel(search_frame, text="🔍", font=ctk.CTkFont(size=16), text_color="#94A3B8").pack(side="left", padx=(18, 10))
+            
         self.search_entry = ctk.CTkEntry(
             search_frame, placeholder_text="Buscar usuarios...",
             fg_color="transparent", border_width=0, font=ctk.CTkFont(size=14), height=44
         )
         self.search_entry.pack(side="left", fill="both", expand=True, padx=(0, 15))
-        self.search_entry.bind("<KeyRelease>", self.on_search_change) # <-- Vincular evento de búsqueda
+        self.search_entry.bind("<KeyRelease>", self.on_search_change)
 
         # Botón Crear Usuario
-        create_btn = ctk.CTkButton(
-            toolbar, text="➕ Crear Usuario", width=160, height=44,
-            font=ctk.CTkFont(size=13, weight="bold"), fg_color="#00B4D8",
-            text_color="#FFFFFF", hover_color="#0096B4", corner_radius=10,
-            command=self.open_create_user_dialog
-        )
+        add_icon = self._load_icon("mas", size=(18, 18))
+        if add_icon:
+            create_btn = ctk.CTkButton(
+                toolbar, text=" Crear Usuario", width=160, height=44,
+                font=ctk.CTkFont(size=13, weight="bold"), fg_color="#00B4D8",
+                text_color="#FFFFFF", hover_color="#0096B4", corner_radius=10,
+                image=add_icon, compound="left",
+                command=self.open_create_user_dialog
+            )
+        else:
+            create_btn = ctk.CTkButton(
+                toolbar, text="➕ Crear Usuario", width=160, height=44,
+                font=ctk.CTkFont(size=13, weight="bold"), fg_color="#00B4D8",
+                text_color="#FFFFFF", hover_color="#0096B4", corner_radius=10,
+                command=self.open_create_user_dialog
+            )
         create_btn.pack(side="right")
 
     def on_search_change(self, event):
         """Evento que se dispara al cambiar el texto de búsqueda."""
         self.search_query = self.search_entry.get().strip()
         self.current_page = 1 # Reiniciar a la primera página al buscar
-        self.load_users() # <-- Llamar a load_users para refrescar
+        self.load_users()
 
     def create_summary_cards(self, parent):
         """Crea las tarjetas de resumen (Administradores/Empleados)."""
@@ -155,13 +174,10 @@ class UsersView(BaseView):
         ).pack(anchor="w", pady=(5, 0))
 
         # Icono de escudo
-        shield_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "filtro.png") # Reemplaza por el ícono correcto si tienes uno
-        try:
-            img = Image.open(shield_icon_path)
-            img = img.resize((24, 24), Image.LANCZOS)
-            shield_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(24, 24))
+        shield_icon = self._load_icon("dashboard", size=(24, 24))
+        if shield_icon:
             ctk.CTkLabel(admin_inner, image=shield_icon, text="").place(relx=0.95, rely=0.5, anchor="center")
-        except:
+        else:
             ctk.CTkLabel(admin_inner, text="🛡️", font=ctk.CTkFont(size=16), text_color="#FFFFFF").place(relx=0.95, rely=0.5, anchor="center")
 
         # Tarjeta Empleados
@@ -194,13 +210,10 @@ class UsersView(BaseView):
         ).pack(anchor="w", pady=(5, 0))
 
         # Icono de usuario
-        user_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "user_avatar.png")
-        try:
-            img = Image.open(user_icon_path)
-            img = img.resize((24, 24), Image.LANCZOS)
-            user_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(24, 24))
+        user_icon = self._load_icon("user_avatar", size=(24, 24))
+        if user_icon:
             ctk.CTkLabel(employee_inner, image=user_icon, text="").place(relx=0.95, rely=0.5, anchor="center")
-        except:
+        else:
             ctk.CTkLabel(employee_inner, text="👤", font=ctk.CTkFont(size=16), text_color="#2b2d42").place(relx=0.95, rely=0.5, anchor="center")
 
     def create_table(self, parent):
@@ -310,7 +323,7 @@ class UsersView(BaseView):
                 text="No se encontraron usuarios con los filtros aplicados.",
                 font=ctk.CTkFont(size=14), text_color="#6B7280"
             )
-            no_users_label.pack(expand=True)
+            no_users_label.pack(expand=True, pady=20)
             return
 
         # Crear filas para cada usuario
@@ -354,6 +367,7 @@ class UsersView(BaseView):
         role_name = user["rol"].lower() if user["rol"] else "empleado"
         role_colors = {
             "admin": ("#00B4D8", "#FFFFFF"),
+            "administrador": ("#00B4D8", "#FFFFFF"),
             "empleado": ("#E5E7EB", "#1E293B")
         }
         bg_color, text_color = role_colors.get(role_name, ("#E5E7EB", "#1E293B"))
@@ -373,7 +387,8 @@ class UsersView(BaseView):
         status = user["estado"]
         badge_colors = {
             "Activo": ("#DCFCE7", "#16A34A"),
-            "Inactivo": ("#FEE2E2", "#DC2626")
+            "Inactivo": ("#FEE2E2", "#DC2626"),
+            "Pendiente": ("#FEF3C7", "#D97706")
         }
         bg_color, text_color = badge_colors.get(status, badge_colors["Activo"])
 
@@ -385,7 +400,15 @@ class UsersView(BaseView):
         ).pack(padx=12, pady=4)
 
         # Último Acceso (150px)
-        ultimo_acceso_text = user["ultimo_acceso"].strftime("%Y-%m-%d") if user["ultimo_acceso"] else "Nunca"
+        ultimo_acceso_text = ""
+        try:
+            if user["ultimo_acceso"]:
+                ultimo_acceso_text = user["ultimo_acceso"].strftime("%Y-%m-%d") 
+            else:
+                ultimo_acceso_text = "Nunca"
+        except Exception:
+            ultimo_acceso_text = "Nunca"
+            
         ultimo_acceso_frame = ctk.CTkFrame(inner_frame, fg_color="transparent", width=150)
         ultimo_acceso_frame.pack(side="left", padx=8)
         ultimo_acceso_frame.pack_propagate(False)
@@ -524,8 +547,11 @@ class UsersView(BaseView):
 
         except Exception as e:
             Logger.log_error_exception(e, "USERS_VIEW")
-            # Opcional: Mostrar un mensaje de error al usuario
-            # self.show_message("Error al cargar datos iniciales", "error")
+            alert_manager.show_error(
+                "Error al cargar datos", 
+                f"No se pudieron cargar los datos iniciales.\n\nError: {str(e)}",
+                self
+            )
 
     def load_users(self):
         """Carga usuarios desde el controlador."""
@@ -545,8 +571,11 @@ class UsersView(BaseView):
 
         except Exception as e:
             Logger.log_error_exception(e, "USERS_VIEW")
-            # Opcional: Mostrar un mensaje de error al usuario
-            # self.show_message("Error al cargar usuarios", "error")
+            alert_manager.show_error(
+                "Error al cargar usuarios", 
+                "No se pudieron cargar los usuarios.\n\nPor favor, intente de nuevo.",
+                self
+            )
 
     def update_summary_cards(self, summary):
         """Actualiza las tarjetas de resumen con los datos del resumen."""
@@ -561,67 +590,12 @@ class UsersView(BaseView):
 
         start_index = (self.current_page - 1) * self.users_per_page + 1
         end_index = min(start_index + len(self.users) - 1, self.total_users)
-        self.pagination_label.configure(text=f"Mostrando {start_index}-{end_index} de {self.total_users} usuarios")
-
-    def show_message(self, message, msg_type="info"):
-        """Muestra un mensaje temporal al usuario."""
-        colors = {"info": "#3B82F6", "success": "#10B981", "warning": "#F59E0B", "error": "#EF4444"}
-        color = colors.get(msg_type, "#3B82F6")
-
-        popup = ctk.CTkToplevel(self)
-        popup.title("")
-        popup.geometry("300x100")
-        popup.resizable(False, False)
-        popup.configure(fg_color="#FFFFFF")
-        popup.transient(self)
-        popup.grab_set()
-
-        # Centrar popup
-        popup.update_idletasks()
-        x = self.winfo_x() + (self.winfo_width() // 2) - (300 // 2)
-        y = self.winfo_y() + (self.winfo_height() // 2) - (100 // 2)
-        popup.geometry(f"300x100+{x}+{y}")
-
-        # Frame para contenido
-        content_frame = ctk.CTkFrame(popup, fg_color="transparent")
-        content_frame.pack(fill="both", expand=True, padx=20, pady=10)
-
-        # Icono según tipo de mensaje
-        icon_path = ""
-        if msg_type == "success":
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert_info.png")
-        elif msg_type == "error":
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert.png")
-        elif msg_type == "warning":
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert_yellow.png")
-        else:  # info
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "notifications.png")
-
-        try:
-            img = Image.open(icon_path)
-            img = img.resize((20, 20), Image.LANCZOS)
-            icon_img = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
-            icon_label = ctk.CTkLabel(content_frame, image=icon_img, text="")
-            icon_label.pack(side="left", padx=(0, 10))
-        except:
-            # Fallback a emoji si no se puede cargar el ícono
-            fallback_emoji = {"info": "ℹ️", "success": "✅", "warning": "⚠️", "error": "❌"}
-            ctk.CTkLabel(content_frame, text=fallback_emoji.get(msg_type, "ℹ️"), font=ctk.CTkFont(size=16)).pack(side="left", padx=(0, 10))
-
-        # Texto del mensaje
-        label = ctk.CTkLabel(
-            content_frame, text=message,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color=color
+        self.pagination_label.configure(
+            text=f"Mostrando {start_index}-{end_index} de {self.total_users} usuarios | Página {self.current_page}"
         )
-        label.pack(side="left", expand=True)
-
-        popup.after(3000, popup.destroy)
 
     def open_create_user_dialog(self):
         """Abre un diálogo para crear un nuevo usuario."""
-        from tkinter import messagebox
-        # En lugar de un mensaje simple, abrir un diálogo para añadir producto
         self.open_add_user_dialog()
 
     def open_add_user_dialog(self):
@@ -637,17 +611,34 @@ class UsersView(BaseView):
         y = self.winfo_y() + (self.winfo_height() // 2) - (600 // 2)
         dialog.geometry(f"500x600+{x}+{y}")
 
+        # Título con ícono
+        title_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        title_frame.pack(fill="x", pady=(20, 10), padx=20)
+
+        user_icon = self._load_icon("users", size=(32, 32))
+        if user_icon:
+            ctk.CTkLabel(title_frame, image=user_icon, text="").pack(side="left", padx=(0, 10))
+        else:
+            ctk.CTkLabel(title_frame, text="👥", font=ctk.CTkFont(size=20)).pack(side="left", padx=(0, 10))
+            
+        ctk.CTkLabel(
+            title_frame,
+            text="Crear Nuevo Usuario",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#2b2d42"
+        ).pack(side="left")
+
         # Scrollable Frame para el formulario
         form_frame = ctk.CTkScrollableFrame(dialog, fg_color="transparent")
-        form_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        form_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
         # Campos del formulario
         fields = [
-            ("Nombre Completo:", "name_entry", "Ingrese el nombre completo"),
-            ("Nombre de Usuario:", "username_entry", "Ingrese el nombre de usuario"),
-            ("Email:", "email_entry", "Ingrese el correo electrónico"),
-            ("Contraseña:", "password_entry", "Ingrese la contraseña"),
-            ("Confirmar Contraseña:", "confirm_password_entry", "Confirme la contraseña")
+            ("Nombre Completo:*", "name_entry", "Ingrese el nombre completo"),
+            ("Nombre de Usuario:*", "username_entry", "Ingrese el nombre de usuario"),
+            ("Email:*", "email_entry", "ejemplo@empresa.com"),
+            ("Contraseña:*", "password_entry", "Ingrese la contraseña"),
+            ("Confirmar Contraseña:*", "confirm_password_entry", "Confirme la contraseña")
         ]
 
         for label_text, var_name, placeholder in fields:
@@ -659,7 +650,7 @@ class UsersView(BaseView):
             ).pack(anchor="w", pady=(5, 0))
 
             if var_name in ["password_entry", "confirm_password_entry"]:
-                widget = ctk.CTkEntry(field_frame, placeholder_text=placeholder, show="*")
+                widget = ctk.CTkEntry(field_frame, placeholder_text=placeholder, show="•")
             else:
                 widget = ctk.CTkEntry(field_frame, placeholder_text=placeholder)
             widget.pack(fill="x", pady=(5, 10))
@@ -668,7 +659,7 @@ class UsersView(BaseView):
 
         # Rol
         ctk.CTkLabel(
-            form_frame, text="Rol:", font=ctk.CTkFont(size=12)
+            form_frame, text="Rol:*", font=ctk.CTkFont(size=12)
         ).pack(anchor="w", pady=(10, 0))
 
         self.role_combo = ctk.CTkComboBox(form_frame, values=["Seleccione un rol"])
@@ -676,11 +667,16 @@ class UsersView(BaseView):
 
         # Cargar roles en el combo box
         roles_list = [role['name'] for role in self.user_roles.values()]
-        self.role_combo.configure(values=roles_list)
+        if roles_list:
+            self.role_combo.configure(values=roles_list)
+            self.role_combo.set(roles_list[0])
+        else:
+            self.role_combo.configure(values=["No hay roles disponibles"])
+            self.role_combo.set("No hay roles disponibles")
 
         # Botones de acción
-        buttons_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        buttons_frame.pack(fill="x", pady=(20, 0))
+        buttons_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        buttons_frame.pack(fill="x", pady=(0, 20), padx=20)
 
         def save_user():
             # Validar campos
@@ -692,12 +688,49 @@ class UsersView(BaseView):
             role_name = self.role_combo.get().strip()
 
             # Validación básica
-            if not name or not username or not email or not password or not role_name:
-                self.show_message("Por favor, complete todos los campos.", "error")
+            required_fields = [
+                ("nombre completo", name),
+                ("nombre de usuario", username),
+                ("email", email),
+                ("contraseña", password),
+                ("confirmar contraseña", confirm_password),
+                ("rol", role_name)
+            ]
+            
+            missing_fields = []
+            for field_name, field_value in required_fields:
+                if not field_value or field_value == "Seleccione un rol" or field_value == "No hay roles disponibles":
+                    missing_fields.append(field_name)
+            
+            if missing_fields:
+                alert_manager.validation_error(
+                    "Por favor complete los siguientes campos obligatorios:\n\n" + 
+                    "\n".join([f"• {field}" for field in missing_fields]),
+                    self
+                )
+                return
+
+            # Validar formato de email
+            if "@" not in email or "." not in email:
+                alert_manager.validation_error(
+                    "Por favor ingrese una dirección de email válida.\n\nEjemplo: usuario@empresa.com",
+                    self
+                )
                 return
 
             if password != confirm_password:
-                self.show_message("Las contraseñas no coinciden.", "error")
+                alert_manager.validation_error(
+                    "Las contraseñas no coinciden.\n\nPor favor, asegúrese de que ambas contraseñas sean iguales.",
+                    self
+                )
+                return
+
+            # Validar fortaleza de contraseña
+            if len(password) < 6:
+                alert_manager.validation_error(
+                    "La contraseña debe tener al menos 6 caracteres.\n\nPor seguridad, use una contraseña más larga.",
+                    self
+                )
                 return
 
             # Obtener el ID del rol
@@ -708,7 +741,17 @@ class UsersView(BaseView):
                     break
 
             if role_id is None:
-                self.show_message("Rol no válido.", "error")
+                alert_manager.show_error("Error de Rol", "Rol no válido.", self)
+                return
+
+            # Confirmar creación
+            confirm_message = f"¿Está seguro de crear el usuario '{name}'?\n\n"
+            confirm_message += f"• Nombre de usuario: {username}\n"
+            confirm_message += f"• Email: {email}\n"
+            confirm_message += f"• Rol: {role_name}\n\n"
+            confirm_message += "El usuario recibirá acceso al sistema según los permisos del rol asignado."
+
+            if not alert_manager.confirm("Confirmar Creación de Usuario", confirm_message, self):
                 return
 
             # Preparar datos para enviar al controlador
@@ -723,26 +766,44 @@ class UsersView(BaseView):
             # Usar el controlador para crear el usuario
             success, result = self.controller.create_user(user_data)
             if success:
-                Logger.success(f"Usuario '{name}' creado con ID {result['id']}", "USERS_VIEW")
+                Logger.success(f"Usuario '{name}' creado con ID {result.get('id', 'N/A')}", "USERS_VIEW")
                 # Cerrar el diálogo
                 dialog.destroy()
                 # Recargar la lista de usuarios
                 self.load_users()
+                # Actualizar resumen
+                summary = self.controller.get_users_summary()
+                self.update_summary_cards(summary)
                 # Mostrar mensaje de éxito
-                self.show_message(f"Usuario '{name}' creado correctamente.", "success")
+                alert_manager.show_success(
+                    "Usuario Creado", 
+                    f"El usuario '{name}' ha sido creado exitosamente.\n\n"
+                    f"• Nombre de usuario: {username}\n"
+                    f"• Email: {email}\n"
+                    f"• Rol: {role_name}\n"
+                    f"• Estado: Activo\n\n"
+                    f"El usuario ya puede iniciar sesión en el sistema.",
+                    self
+                )
             else:
                 Logger.error(f"Error al crear usuario '{name}': {result}", "USERS_VIEW")
-                self.show_message(f"Error al crear: {result}", "error")
+                alert_manager.show_error(
+                    "Error al Crear Usuario", 
+                    f"No se pudo crear el usuario.\n\nError: {result}",
+                    self
+                )
 
+        # Botón Guardar
         save_btn = ctk.CTkButton(
-            buttons_frame, text="Guardar Usuario", width=150, height=30,
+            buttons_frame, text="💾 Guardar Usuario", width=150, height=40,
             fg_color="#00B4D8", text_color="#FFFFFF", hover_color="#0096B4",
             command=save_user
         )
         save_btn.pack(side="left", padx=10)
 
+        # Botón Cancelar
         cancel_btn = ctk.CTkButton(
-            buttons_frame, text="Cancelar", width=150, height=30,
+            buttons_frame, text="Cancelar", width=150, height=40,
             fg_color="#E5E7EB", text_color="#1E293B", hover_color="#D1D5DB",
             command=dialog.destroy
         )
@@ -765,17 +826,34 @@ class UsersView(BaseView):
         y = self.winfo_y() + (self.winfo_height() // 2) - (600 // 2)
         dialog.geometry(f"500x600+{x}+{y}")
 
+        # Título con ícono
+        title_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        title_frame.pack(fill="x", pady=(20, 10), padx=20)
+
+        user_icon = self._load_icon("users", size=(32, 32))
+        if user_icon:
+            ctk.CTkLabel(title_frame, image=user_icon, text="").pack(side="left", padx=(0, 10))
+        else:
+            ctk.CTkLabel(title_frame, text="👤", font=ctk.CTkFont(size=20)).pack(side="left", padx=(0, 10))
+            
+        ctk.CTkLabel(
+            title_frame,
+            text=f"Editar Usuario: {user['nombre']}",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#2b2d42"
+        ).pack(side="left")
+
         # Scrollable Frame para el formulario
         form_frame = ctk.CTkScrollableFrame(dialog, fg_color="transparent")
-        form_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        form_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
         # Campos del formulario
         fields = [
-            ("Nombre Completo:", "name_entry", "Ingrese el nombre completo"),
-            ("Nombre de Usuario:", "username_entry", "Ingrese el nombre de usuario"),
-            ("Email:", "email_entry", "Ingrese el correo electrónico"),
-            ("Contraseña (opcional):", "password_entry", "Ingrese una nueva contraseña (deje vacío para mantener la actual)"),
-            ("Confirmar Contraseña:", "confirm_password_entry", "Confirme la nueva contraseña")
+            ("Nombre Completo:*", "name_entry", "Ingrese el nombre completo"),
+            ("Nombre de Usuario:*", "username_entry", "Ingrese el nombre de usuario"),
+            ("Email:*", "email_entry", "ejemplo@empresa.com"),
+            ("Nueva Contraseña (opcional):", "password_entry", "Deje vacío para mantener la actual"),
+            ("Confirmar Nueva Contraseña:", "confirm_password_entry", "Confirme la nueva contraseña")
         ]
 
         for label_text, var_name, placeholder in fields:
@@ -787,7 +865,7 @@ class UsersView(BaseView):
             ).pack(anchor="w", pady=(5, 0))
 
             if var_name in ["password_entry", "confirm_password_entry"]:
-                widget = ctk.CTkEntry(field_frame, placeholder_text=placeholder, show="*")
+                widget = ctk.CTkEntry(field_frame, placeholder_text=placeholder, show="•")
             else:
                 widget = ctk.CTkEntry(field_frame, placeholder_text=placeholder)
             widget.pack(fill="x", pady=(5, 10))
@@ -796,7 +874,7 @@ class UsersView(BaseView):
 
         # Rol
         ctk.CTkLabel(
-            form_frame, text="Rol:", font=ctk.CTkFont(size=12)
+            form_frame, text="Rol:*", font=ctk.CTkFont(size=12)
         ).pack(anchor="w", pady=(10, 0))
 
         self.role_combo = ctk.CTkComboBox(form_frame, values=["Seleccione un rol"])
@@ -804,23 +882,33 @@ class UsersView(BaseView):
 
         # Cargar roles en el combo box
         roles_list = [role['name'] for role in self.user_roles.values()]
-        self.role_combo.configure(values=roles_list)
+        if roles_list:
+            self.role_combo.configure(values=roles_list)
+        else:
+            self.role_combo.configure(values=["No hay roles disponibles"])
+            self.role_combo.set("No hay roles disponibles")
 
         # Rellenar campos con los datos actuales del usuario
         self.name_entry.insert(0, user['nombre'])
         self.username_entry.insert(0, user['username'])
         self.email_entry.insert(0, user['email'])
-        # No rellenar la contraseña por seguridad
-        # self.password_entry.insert(0, "") # Dejar vacío
-        # self.confirm_password_entry.insert(0, "") # Dejar vacío
 
         # Seleccionar el rol actual
-        current_role_name = self.user_roles.get(user.get('rol'), {}).get('name', 'Sin Rol')
-        self.role_combo.set(current_role_name)
+        current_role_id = user.get('rol')
+        current_role_name = ""
+        for rid, role_data in self.user_roles.items():
+            if str(rid) == str(current_role_id):
+                current_role_name = role_data['name']
+                break
+                
+        if current_role_name:
+            self.role_combo.set(current_role_name)
+        elif roles_list:
+            self.role_combo.set(roles_list[0])
 
         # Botones de acción
-        buttons_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        buttons_frame.pack(fill="x", pady=(20, 0))
+        buttons_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        buttons_frame.pack(fill="x", pady=(0, 20), padx=20)
 
         def save_edited_user():
             # Validar campos
@@ -832,13 +920,33 @@ class UsersView(BaseView):
             role_name = self.role_combo.get().strip()
 
             if not name or not username or not email or not role_name:
-                self.show_message("Por favor, complete todos los campos.", "error")
+                alert_manager.empty_fields(self)
+                return
+
+            # Validar formato de email
+            if "@" not in email or "." not in email:
+                alert_manager.validation_error(
+                    "Por favor ingrese una dirección de email válida.\n\nEjemplo: usuario@empresa.com",
+                    self
+                )
                 return
 
             # Si se ingresó una contraseña, validar que coincidan
-            if password and password != confirm_password:
-                self.show_message("Las contraseñas no coinciden.", "error")
-                return
+            if password:
+                if password != confirm_password:
+                    alert_manager.validation_error(
+                        "Las contraseñas no coinciden.\n\nPor favor, asegúrese de que ambas contraseñas sean iguales.",
+                        self
+                    )
+                    return
+                
+                # Validar fortaleza de contraseña
+                if len(password) < 6:
+                    alert_manager.validation_error(
+                        "La contraseña debe tener al menos 6 caracteres.\n\nPor seguridad, use una contraseña más larga.",
+                        self
+                    )
+                    return
 
             # Obtener el ID del rol
             role_id = None
@@ -848,7 +956,7 @@ class UsersView(BaseView):
                     break
 
             if role_id is None:
-                self.show_message("Rol no válido.", "error")
+                alert_manager.show_error("Error de Rol", "Rol no válido.", self)
                 return
 
             # Preparar datos para enviar al controlador
@@ -863,6 +971,18 @@ class UsersView(BaseView):
             if password:
                 user_data["password"] = password
 
+            # Confirmar actualización
+            confirm_message = f"¿Está seguro de actualizar los datos del usuario?\n\n"
+            confirm_message += f"• Nombre: {user['nombre']} → {name}\n"
+            confirm_message += f"• Nombre de usuario: {user['username']} → {username}\n"
+            confirm_message += f"• Email: {user['email']} → {email}\n"
+            confirm_message += f"• Rol: {current_role_name} → {role_name}\n"
+            if password:
+                confirm_message += "• Contraseña: Será actualizada\n"
+
+            if not alert_manager.confirm("Confirmar Actualización de Usuario", confirm_message, self):
+                return
+
             # Usar el controlador para actualizar el usuario
             success, result = self.controller.update_user(user['id'], user_data)
             if success:
@@ -872,14 +992,18 @@ class UsersView(BaseView):
                 # Recargar la lista de usuarios
                 self.load_users()
                 # Mostrar mensaje de éxito
-                self.show_message(f"Usuario '{name}' actualizado correctamente.", "success")
+                alert_manager.success_update(self)
             else:
                 Logger.error(f"Error al actualizar usuario ID {user['id']}: {result}", "USERS_VIEW")
-                self.show_message(f"Error al actualizar: {result}", "error")
+                alert_manager.show_error(
+                    "Error al Actualizar", 
+                    f"No se pudo actualizar el usuario.\n\nError: {result}",
+                    self
+                )
 
         # Botón Guardar Cambios
         save_btn = ctk.CTkButton(
-            buttons_frame, text="Guardar Cambios", width=150, height=30,
+            buttons_frame, text="💾 Guardar Cambios", width=150, height=40,
             fg_color="#00B4D8", text_color="#FFFFFF", hover_color="#0096B4",
             command=save_edited_user
         )
@@ -887,7 +1011,7 @@ class UsersView(BaseView):
 
         # Botón Cancelar
         cancel_btn = ctk.CTkButton(
-            buttons_frame, text="Cancelar", width=150, height=30,
+            buttons_frame, text="Cancelar", width=150, height=40,
             fg_color="#E5E7EB", text_color="#1E293B", hover_color="#D1D5DB",
             command=dialog.destroy
         )
@@ -897,67 +1021,94 @@ class UsersView(BaseView):
         """Cambia el estado de un usuario (Activo/Inactivo)."""
         try:
             new_status = "Inactivo" if user["estado"] == "Activo" else "Activo"
-            confirmed = messagebox.askyesno(
-                "Confirmar Cambio de Estado",
-                f"¿Está seguro de cambiar el estado del usuario '{user['nombre']}' a {new_status}?\n\nEsta acción puede afectar su acceso al sistema."
-            )
-            if confirmed:
-                success, message = self.controller.change_user_status(user['id'], new_status == "Activo")
-                if success:
-                    Logger.success(f"Estado del usuario {user['id']} cambiado a {new_status}", "USERS_VIEW")
-                    # Refrescar la lista de usuarios
-                    self.load_users()
-                    # Mostrar mensaje de éxito
-                    self.show_message(f"Estado del usuario '{user['nombre']}' actualizado a {new_status}.", "success")
-                else:
-                    Logger.error(f"Error al cambiar estado del usuario {user['id']}: {message}", "USERS_VIEW")
-                    self.show_message(f"Error al cambiar estado: {message}", "error")
+            status_change = "desactivar" if new_status == "Inactivo" else "activar"
+            
+            confirm_message = f"¿Está seguro de {status_change} al usuario '{user['nombre']}'?\n\n"
+            
+            if new_status == "Inactivo":
+                confirm_message += "⚠️ ADVERTENCIA: El usuario perderá acceso al sistema.\n"
+                confirm_message += "No podrá iniciar sesión hasta que sea reactivado.\n\n"
+            else:
+                confirm_message += "El usuario recuperará acceso completo al sistema.\n\n"
+                
+            confirm_message += f"Usuario: {user['nombre']}\n"
+            confirm_message += f"Estado actual: {user['estado']}\n"
+            confirm_message += f"Nuevo estado: {new_status}"
+
+            if not alert_manager.confirm("Confirmar Cambio de Estado", confirm_message, self):
+                return
+                
+            success, message = self.controller.change_user_status(user['id'], new_status == "Activo")
+            if success:
+                Logger.success(f"Estado del usuario {user['id']} cambiado a {new_status}", "USERS_VIEW")
+                # Refrescar la lista de usuarios
+                self.load_users()
+                # Mostrar mensaje de éxito
+                alert_manager.show_success(
+                    f"Usuario {status_change.title()}do", 
+                    f"El usuario '{user['nombre']}' ha sido {status_change}do exitosamente.\n\n"
+                    f"Nuevo estado: {new_status}",
+                    self
+                )
+            else:
+                Logger.error(f"Error al cambiar estado del usuario {user['id']}: {message}", "USERS_VIEW")
+                alert_manager.show_error(
+                    "Error al Cambiar Estado", 
+                    f"No se pudo cambiar el estado del usuario.\n\nError: {message}",
+                    self
+                )
         except Exception as e:
             Logger.log_error_exception(e, "USERS_VIEW")
-            self.show_message(f"Error inesperado al cambiar estado: {str(e)}", "error")
+            alert_manager.show_error(
+                "Error Inesperado", 
+                f"Error inesperado al cambiar estado: {str(e)}",
+                self
+            )
 
     def delete_user(self, user):
         """Acción para eliminar un usuario."""
         try:
             # Validar que user tiene los datos necesarios
             if not user or 'id' not in user or 'nombre' not in user:
-                self.show_message("Error: Datos del usuario inválidos", "error")
+                alert_manager.show_error("Error", "Datos del usuario inválidos.", self)
                 return
             
-            confirmed = messagebox.askyesno(
-                "Confirmar Eliminación",
-                f"¿Está seguro de eliminar el usuario '{user['nombre']}'?\n\nEsta acción no se puede deshacer."
-            )
+            # Confirmar eliminación con detalles
+            confirm_message = f"¿Está seguro de eliminar permanentemente al usuario '{user['nombre']}'?\n\n"
+            confirm_message += "⚠️ ADVERTENCIA: Esta acción es IRREVERSIBLE.\n\n"
+            confirm_message += f"• Nombre: {user['nombre']}\n"
+            confirm_message += f"• Usuario: {user['username']}\n"
+            confirm_message += f"• Email: {user['email']}\n"
+            confirm_message += f"• Rol: {user['rol']}\n\n"
+            confirm_message += "Se eliminarán todos los datos asociados a este usuario."
+
+            if not alert_manager.confirm_delete(f"el usuario '{user['nombre']}'", self):
+                return
             
-            if confirmed:
-                print(f"[DEBUG] Eliminando usuario ID: {user['id']}, nombre: {user['nombre']}")
-                success, message = self.controller.delete_user(user['id'])
-                print(f"[DEBUG] Resultado: success={success}, message={message}")
+            Logger.info(f"Eliminando usuario ID: {user['id']}, nombre: {user['nombre']}", "USERS_VIEW")
+            success, message = self.controller.delete_user(user['id'])
+            
+            if success:
+                Logger.success(f"Usuario {user['id']} eliminado", "USERS_VIEW")
+                # Refrescar lista de usuarios
+                self.load_users()
+                # Refrescar resumen de usuarios
+                summary = self.controller.get_users_summary()
+                self.update_summary_cards(summary)
+                # Mostrar mensaje de éxito
+                alert_manager.success_delete(self)
+            else:
+                Logger.error(f"Error al eliminar usuario {user['id']}: {message}", "USERS_VIEW")
+                alert_manager.error_delete(self)
                 
-                if success:
-                    Logger.success(f"Usuario {user['id']} eliminado", "USERS_VIEW")
-                    # Refrescar lista de usuarios
-                    self.load_users()
-                    # Refrescar resumen de usuarios
-                    summary = self.controller.get_users_summary()
-                    self.update_summary_cards(summary)
-                    # Mostrar mensaje de éxito
-                    self.show_message("Usuario eliminado correctamente", "success")
-                else:
-                    Logger.error(f"Error al eliminar usuario {user['id']}: {message}", "USERS_VIEW")
-                    self.show_message(f"Error al eliminar: {message}", "error")
         except Exception as e:
-            print(f"[DEBUG] Exception en delete_user: {e}")
             Logger.log_error_exception(e, "USERS_VIEW")
-            self.show_message(f"Error inesperado al eliminar: {str(e)}", "error")
+            alert_manager.show_error(
+                "Error al Eliminar", 
+                f"Error inesperado al eliminar usuario.\n\n{str(e)}",
+                self
+            )
 
     def get_notification_count(self):
         """Obtiene el número de notificaciones no leídas."""
-        try:
-            from model.alert_model import AlertModel
-            alert_model = AlertModel()
-            unread_alerts = alert_model.get_unread_alerts()
-            return len(unread_alerts) if unread_alerts else 0
-        except Exception as e:
-            print(f"Error al contar notificaciones: {e}")
-            return 0
+        return alert_manager.get_unread_count()

@@ -12,6 +12,7 @@ from tkinter import ttk
 
 from components.base_view import BaseView
 from controller.movements_controller import MovementsController
+from utils.alerts import alert_manager
 from utils.logger import Logger
 from utils.helpers import Helpers
 
@@ -117,7 +118,7 @@ class MovementsView(BaseView):
             text_color="#2b2d42"
         ).pack(anchor="w", pady=(0, 10))
 
-        self.product_combo = ctk.CTkComboBox(product_frame, values=["Seleccionar"])
+        self.product_combo = ctk.CTkComboBox(product_frame, values=["Cargando productos..."])
         self.product_combo.pack(fill="x", pady=(0, 10))
 
         # Cantidad
@@ -373,11 +374,22 @@ class MovementsView(BaseView):
     def load_data(self):
         """Carga los datos iniciales: productos, usuarios, resumen diario y movimientos."""
         try:
-            # Cargar productos (usando get_products sin paginación)
-            products = self.controller.get_products(limit=1000) # Asumiendo que get_products devuelve (productos, total)
+            # Cargar productos
+            products_result = self.controller.get_products(limit=1000)
+            if isinstance(products_result, tuple):
+                products, total = products_result
+            else:
+                products = products_result
+                
             self.products = {p['id']: p for p in products}
             product_names = [p['nombre'] for p in products]
-            self.product_combo.configure(values=product_names if product_names else ["No hay productos"])
+            
+            if product_names:
+                self.product_combo.configure(values=product_names)
+                self.product_combo.set(product_names[0])
+            else:
+                self.product_combo.configure(values=["No hay productos"])
+                self.product_combo.set("No hay productos")
 
             # Cargar resumen diario
             self.daily_summary = self.controller.get_daily_summary()
@@ -388,23 +400,36 @@ class MovementsView(BaseView):
 
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_VIEW")
-            self.show_message("Error al cargar datos iniciales.", "error")
+            # Usar alert_manager para mostrar error
+            alert_manager.show_error(
+                "Error al cargar datos", 
+                f"No se pudieron cargar los datos iniciales.\n\nError: {str(e)}",
+                self
+            )
 
     def load_movements(self):
         """Carga los movimientos desde el controlador."""
         try:
             # Usar el controlador para obtener movimientos
-            movements, total = self.controller.get_movements(page=self.current_page, limit=self.movements_per_page)
+            movements, total = self.controller.get_movements(
+                page=self.current_page, 
+                limit=self.movements_per_page
+            )
             self.movements = movements
             self.total_movements = total
 
             # Actualizar UI
             self.update_movements_list()
-            self.update_pagination_label() # <-- Método corregido
+            self.update_pagination_label()
 
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_VIEW")
-            self.show_message("Error al cargar movimientos.", "error")
+            # Usar alert_manager para mostrar error
+            alert_manager.show_error(
+                "Error al cargar movimientos", 
+                "No se pudieron cargar los movimientos.\n\nPor favor, intente de nuevo.",
+                self
+            )
 
     def update_movements_list(self):
         """Actualiza la lista de movimientos en la interfaz."""
@@ -419,7 +444,7 @@ class MovementsView(BaseView):
                 font=ctk.CTkFont(size=14),
                 text_color="#6B7280"
             )
-            no_movements_label.pack(expand=True)
+            no_movements_label.pack(expand=True, pady=20)
             return
 
         for movement in self.movements:
@@ -434,34 +459,79 @@ class MovementsView(BaseView):
 
             # Crear ventana
             win = ctk.CTkToplevel(self)
-            win.title("Todos los movimientos")
-            win.geometry("900x500")
+            win.title("📊 Todos los Movimientos")
+            win.geometry("1000x500")
             win.transient(self)
             win.grab_set()
+            
+            # Centrar ventana
+            win.update_idletasks()
+            x = self.winfo_x() + (self.winfo_width() // 2) - (1000 // 2)
+            y = self.winfo_y() + (self.winfo_height() // 2) - (500 // 2)
+            win.geometry(f"1000x500+{x}+{y}")
 
             # Encabezado con botones
             top_frame = ctk.CTkFrame(win, fg_color="transparent")
-            top_frame.pack(fill="x", padx=12, pady=(12, 6))
+            top_frame.pack(fill="x", padx=20, pady=(15, 10))
 
-            refresh_btn = ctk.CTkButton(top_frame, text="🔄 Actualizar", command=lambda: self._refresh_all_movements_tree(tree), width=110, height=34)
-            refresh_btn.pack(side="right", padx=(6, 0))
+            # Título
+            ctk.CTkLabel(
+                top_frame,
+                text="Todos los Movimientos Registrados",
+                font=ctk.CTkFont(size=18, weight="bold"),
+                text_color="#2b2d42"
+            ).pack(side="left")
 
-            close_btn = ctk.CTkButton(top_frame, text="Cerrar", command=win.destroy, width=100, height=34, fg_color="#EF4444")
-            close_btn.pack(side="right")
+            # Botones a la derecha
+            btn_frame = ctk.CTkFrame(top_frame, fg_color="transparent")
+            btn_frame.pack(side="right")
 
-            # Contenedor para Treeview (con estilo minimal)
+            refresh_btn = ctk.CTkButton(
+                btn_frame, 
+                text="🔄 Actualizar", 
+                command=lambda: self._refresh_all_movements_tree(tree), 
+                width=110, 
+                height=34
+            )
+            refresh_btn.pack(side="left", padx=5)
+
+            export_btn = ctk.CTkButton(
+                btn_frame, 
+                text="📥 Exportar", 
+                command=lambda: self.export_all_movements(all_movements), 
+                width=110, 
+                height=34,
+                fg_color="#10B981"
+            )
+            export_btn.pack(side="left", padx=5)
+
+            close_btn = ctk.CTkButton(
+                btn_frame, 
+                text="Cerrar", 
+                command=win.destroy, 
+                width=100, 
+                height=34, 
+                fg_color="#EF4444"
+            )
+            close_btn.pack(side="left", padx=5)
+
+            # Contenedor para Treeview
             tree_frame = ctk.CTkFrame(win, fg_color="#FFFFFF")
-            tree_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+            tree_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
-            # Treeview (usamos ttk para columnas)
+            # Treeview
             cols = ("id", "tipo", "producto", "cantidad", "motivo", "notas", "fecha", "usuario")
-            tree = ttk.Treeview(tree_frame, columns=cols, show="headings")
+            tree = ttk.Treeview(tree_frame, columns=cols, show="headings", height=20)
             tree.pack(side="left", fill="both", expand=True)
 
             # Scrollbars
             vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
             vsb.pack(side="right", fill="y")
             tree.configure(yscrollcommand=vsb.set)
+
+            hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
+            hsb.pack(side="bottom", fill="x")
+            tree.configure(xscrollcommand=hsb.set)
 
             # Configurar columnas
             tree.heading("id", text="ID")
@@ -479,7 +549,7 @@ class MovementsView(BaseView):
             tree.column("cantidad", width=80, anchor="center")
             tree.column("motivo", width=180, anchor="w")
             tree.column("notas", width=200, anchor="w")
-            tree.column("fecha", width=130, anchor="center")
+            tree.column("fecha", width=150, anchor="center")
             tree.column("usuario", width=140, anchor="w")
 
             # Insertar datos
@@ -496,25 +566,45 @@ class MovementsView(BaseView):
                         fecha_str = str(fecha_val)
 
                 tree.insert("", "end", values=(
-                    m.get("id"), m.get("tipo"), m.get("producto_nombre"), m.get("cantidad"),
-                    m.get("motivo"), m.get("notas") or "", fecha_str, m.get("usuario_nombre")
+                    m.get("id"), 
+                    m.get("tipo"), 
+                    m.get("producto_nombre", "Desconocido"), 
+                    m.get("cantidad"),
+                    m.get("motivo", ""), 
+                    m.get("notas") or "", 
+                    fecha_str, 
+                    m.get("usuario_nombre", "Desconocido")
                 ))
 
-            # Ordenamiento sencillo por fecha (predeterminado ya ordenado por modelo). Añadimos click en encabezados si se desea.
-            # No es necesario recargar el Treeview manualmente al abrir si la data proviene del controlador.
+            # Configurar estilos alternados
+            tree.tag_configure('evenrow', background='#f8f9fa')
+            tree.tag_configure('oddrow', background='#ffffff')
+            
+            for i, item in enumerate(tree.get_children()):
+                tree.item(item, tags=('evenrow' if i % 2 == 0 else 'oddrow',))
 
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_VIEW")
-            self.show_message("Error al abrir ventana de todos los movimientos.", "error")
+            # Usar alert_manager para mostrar error
+            alert_manager.show_error(
+                "Error al abrir movimientos", 
+                f"No se pudieron cargar todos los movimientos.\n\nError: {str(e)}",
+                self
+            )
 
     def _refresh_all_movements_tree(self, tree):
         """
         Refresca el contenido del Treeview con todos los movimientos.
         """
         try:
+            # Limpiar treeview
             for row in tree.get_children():
                 tree.delete(row)
+                
+            # Obtener datos actualizados
             all_movements = self.controller.get_all_movements()
+            
+            # Insertar nuevos datos
             for m in all_movements:
                 fecha_val = m.get("fecha")
                 if fecha_val is None:
@@ -526,12 +616,67 @@ class MovementsView(BaseView):
                         fecha_str = fecha_val.strftime("%Y-%m-%d %H:%M:%S")
                     except Exception:
                         fecha_str = str(fecha_val)
+                        
                 tree.insert("", "end", values=(
-                    m.get("id"), m.get("tipo"), m.get("producto_nombre"), m.get("cantidad"),
-                    m.get("motivo"), m.get("notas") or "", fecha_str, m.get("usuario_nombre")
+                    m.get("id"), 
+                    m.get("tipo"), 
+                    m.get("producto_nombre", "Desconocido"), 
+                    m.get("cantidad"),
+                    m.get("motivo", ""), 
+                    m.get("notas") or "", 
+                    fecha_str, 
+                    m.get("usuario_nombre", "Desconocido")
                 ))
+            
+            # Aplicar estilos alternados
+            for i, item in enumerate(tree.get_children()):
+                tree.item(item, tags=('evenrow' if i % 2 == 0 else 'oddrow',))
+                
+            # Mostrar mensaje de éxito
+            alert_manager.show_success(
+                "Datos Actualizados", 
+                f"Se han cargado {len(all_movements)} movimientos.",
+                self
+            )
+            
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_VIEW")
+            alert_manager.show_error(
+                "Error al actualizar", 
+                "No se pudieron actualizar los movimientos.",
+                self
+            )
+
+    def export_all_movements(self, movements_data):
+        """Exporta todos los movimientos a un archivo."""
+        try:
+            if not movements_data:
+                alert_manager.show_warning("Sin datos", "No hay movimientos para exportar.", self)
+                return
+                
+            # Usar el controlador para exportar
+            success, message = self.controller.export_movements(movements_data)
+            
+            if success:
+                alert_manager.show_success(
+                    "Exportación Exitosa", 
+                    f"Los movimientos se exportaron correctamente.\n\nUbicación: {message}",
+                    self
+                )
+            else:
+                alert_manager.show_error(
+                    "Error al Exportar", 
+                    f"No se pudo exportar los movimientos.\n\nError: {message}",
+                    self
+                )
+                
+        except Exception as e:
+            Logger.log_error_exception(e, "MOVEMENTS_VIEW")
+            alert_manager.show_error(
+                "Error al Exportar", 
+                f"Error inesperado al exportar.\n\n{str(e)}",
+                self
+            )
 
     def create_movement_row(self, parent, movement):
         """Crea una fila para un movimiento en la tabla."""
@@ -591,9 +736,18 @@ class MovementsView(BaseView):
         ).pack(side="left", expand=True, padx=5)
 
         # Fecha
+        fecha_str = ""
+        try:
+            if isinstance(movement["fecha"], str):
+                fecha_str = movement["fecha"]
+            else:
+                fecha_str = movement["fecha"].strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            fecha_str = "Fecha no válida"
+            
         ctk.CTkLabel(
             row,
-            text=movement["fecha"].strftime("%Y-%m-%d %H:%M"),
+            text=fecha_str,
             font=ctk.CTkFont(size=11),
             text_color="#6c757d",
             anchor="center"
@@ -602,7 +756,7 @@ class MovementsView(BaseView):
         # Usuario
         ctk.CTkLabel(
             row,
-            text=movement["usuario_nombre"],
+            text=movement.get("usuario_nombre", "Desconocido"),
             font=ctk.CTkFont(size=11),
             text_color="#6c757d",
             anchor="center"
@@ -621,7 +775,13 @@ class MovementsView(BaseView):
         if self.total_movements == 0:
             self.pagination_label.configure(text="No hay movimientos para mostrar")
         else:
-            self.pagination_label.configure(text=f"Mostrando {len(self.movements)} movimientos")
+            total_pages = (self.total_movements + self.movements_per_page - 1) // self.movements_per_page
+            start_index = (self.current_page - 1) * self.movements_per_page + 1
+            end_index = min(start_index + len(self.movements) - 1, self.total_movements)
+            
+            self.pagination_label.configure(
+                text=f"Página {self.current_page} de {total_pages} | Mostrando {len(self.movements)} de {self.total_movements} movimientos"
+            )
 
     def save_movement(self):
         """Guarda el movimiento registrado."""
@@ -630,38 +790,76 @@ class MovementsView(BaseView):
         quantity_str = self.quantity_entry.get().strip()
         motive = self.motive_entry.get().strip()
 
-        if product_name == "Cargando..." or product_name == "No hay productos" or not product_name:
-            self.show_message("Seleccione un producto válido.", "error")
+        if product_name == "Cargando productos..." or product_name == "No hay productos" or not product_name:
+            alert_manager.validation_error(
+                "Por favor seleccione un producto válido de la lista.",
+                self
+            )
             return
 
         if not quantity_str or not motive:
-            self.show_message("Por favor, complete todos los campos.", "error")
+            alert_manager.empty_fields(self)
             return
 
         try:
             quantity = int(quantity_str)
             if quantity <= 0:
-                self.show_message("La cantidad debe ser un número positivo.", "error")
+                alert_manager.validation_error(
+                    "La cantidad debe ser un número positivo mayor que cero.",
+                    self
+                )
                 return
         except ValueError:
-            self.show_message("La cantidad debe ser un número válido.", "error")
+            alert_manager.validation_error(
+                "La cantidad debe ser un número válido (entero).",
+                self
+            )
             return
 
         # Obtener el ID del producto
         product_id = None
+        product_data = None
         for pid, prod in self.products.items():
             if prod['nombre'] == product_name:
                 product_id = pid
+                product_data = prod
                 break
 
         if product_id is None:
-            self.show_message("Producto no válido.", "error")
+            alert_manager.show_error(
+                "Producto no encontrado", 
+                "El producto seleccionado no existe en la base de datos.",
+                self
+            )
             return
+
+        # Validar stock disponible para salidas
+        if self.movement_type == "Salida":
+            stock_disponible = product_data.get('stock', 0)
+            if stock_disponible < quantity:
+                alert_manager.show_warning(
+                    "Stock Insuficiente",
+                    f"No hay suficiente stock disponible.\n\n"
+                    f"Stock actual: {stock_disponible} unidades\n"
+                    f"Intenta retirar: {quantity} unidades\n\n"
+                    f"Faltante: {quantity - stock_disponible} unidades",
+                    self
+                )
+                return
 
         notes = self.notes_textbox.get("1.0", "end-1c").strip()
 
+        # Confirmar el movimiento
+        movimiento_texto = f"{self.movement_type} de {quantity} unidades"
+        confirm_message = f"¿Está seguro de registrar {movimiento_texto.lower()} del producto '{product_name}'?\n\n"
+        confirm_message += f"Motivo: {motive}\n"
+        confirm_message += f"Notas: {notes if notes else 'Ninguna'}"
+
+        if not alert_manager.confirm("Confirmar Movimiento", confirm_message, self):
+            return
+
         # Usar el controlador para registrar el movimiento
-        success, message = self.controller.register_movement(
+        success, message, new_product_data = self.controller.register_movement(
             product_id=product_id,
             quantity=quantity,
             movement_type=self.movement_type,
@@ -671,99 +869,95 @@ class MovementsView(BaseView):
 
         if success:
             Logger.success(f"Movimiento registrado: {message}", "MOVEMENTS_VIEW")
+            
+            # Generar alerta de movimiento usando alert_manager
+            alert_manager.generate_movement_alert(
+                product_data,
+                self.movement_type,
+                quantity,
+                motive
+            )
+            
+            # Actualizar UI
             self.load_movements()
             self.daily_summary = self.controller.get_daily_summary()
             self.update_daily_summary()
-            self.show_message(message, "success")
+            
+            # Mostrar mensaje de éxito detallado
+            alert_manager.show_success(
+                "Movimiento Registrado",
+                f"Se registró correctamente la {movimiento_texto.lower()}.\n\n"
+                f"• Producto: {product_name}\n"
+                f"• Cantidad: {quantity} unidades\n"
+                f"• Motivo: {motive}\n"
+                f"• Stock actualizado: {new_product_data.get('stock', 'N/A')} unidades",
+                self
+            )
+            
             self.clear_form()
         else:
             Logger.error(f"Error al registrar movimiento: {message}", "MOVEMENTS_VIEW")
-            self.show_message(f"Error al registrar: {message}", "error")
+            alert_manager.show_error(
+                "Error al Registrar",
+                f"No se pudo registrar el movimiento.\n\nError: {message}",
+                self
+            )
 
     def clear_form(self):
         """Limpia el formulario de registro."""
-        if self.products:
-            self.product_combo.set(list(self.products.values())[0]['nombre'])
-        else:
-            self.product_combo.set("No hay productos")
+        # Restablecer tipo de movimiento a Entrada
+        self.set_movement_type("Entrada")
+        
+        # Limpiar campos
         self.quantity_entry.delete(0, "end")
         self.motive_entry.delete(0, "end")
+        
+        # Restablecer notas
         self.notes_textbox.delete("1.0", "end")
         self.notes_textbox.insert("1.0", "Observaciones adicionales...")
-        self.set_movement_type("Entrada")
-
-    def show_message(self, message, msg_type="info"):
-        """Muestra un mensaje temporal al usuario."""
-        colors = {"info": "#3B82F6", "success": "#10B981", "warning": "#F59E0B", "error": "#EF4444"}
-        color = colors.get(msg_type, "#3B82F6")
-
-        popup = ctk.CTkToplevel(self)
-        popup.title("")
-        popup.geometry("300x100")
-        popup.resizable(False, False)
-        popup.configure(fg_color="#FFFFFF")
-        popup.transient(self)
-        popup.grab_set()
-
-        popup.update_idletasks()
-        x = self.winfo_x() + (self.winfo_width() // 2) - (300 // 2)
-        y = self.winfo_y() + (self.winfo_height() // 2) - (100 // 2)
-        popup.geometry(f"300x100+{x}+{y}")
-
-        content_frame = ctk.CTkFrame(popup, fg_color="transparent")
-        content_frame.pack(fill="both", expand=True, padx=20, pady=10)
-
-        icon_path = ""
-        if msg_type == "success":
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert_info.png")
-        elif msg_type == "error":
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert.png")
-        elif msg_type == "warning":
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "alert_yellow.png")
-        else:  # info
-            icon_path = os.path.join(self.base_path, "..", "assets", "icons", "notifications.png")
-
-        try:
-            img = Image.open(icon_path)
-            img = img.resize((20, 20), Image.LANCZOS)
-            icon_img = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
-            icon_label = ctk.CTkLabel(content_frame, image=icon_img, text="")
-            icon_label.pack(side="left", padx=(0, 10))
-        except:
-            fallback_emoji = {"info": "ℹ️", "success": "✅", "warning": "⚠️", "error": "❌"}
-            ctk.CTkLabel(content_frame, text=fallback_emoji.get(msg_type, "ℹ️"), font=ctk.CTkFont(size=16)).pack(side="left", padx=(0, 10))
-
-        label = ctk.CTkLabel(
-            content_frame, text=message,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color=color
-        )
-        label.pack(side="left", expand=True)
-
-
-        popup.after(3000, popup.destroy)
+        self.notes_textbox.configure(text_color="#6c757d")
+        
+        # Seleccionar primer producto si existe
+        if self.products:
+            product_names = [p['nombre'] for p in self.products.values()]
+            if product_names:
+                self.product_combo.set(product_names[0])
 
     def on_notes_focus_in(self, event):
         """Maneja el evento de foco en el campo de notas (borra placeholder)."""
         current_text = self.notes_textbox.get("1.0", "end-1c").strip()
         if current_text == "Observaciones adicionales...":
             self.notes_textbox.delete("1.0", "end")
-            self.notes_textbox.configure(text_color="#2b2d42") # Color normal
+            self.notes_textbox.configure(text_color="#2b2d42")
 
     def on_notes_focus_out(self, event):
         """Maneja el evento de pérdida de foco en el campo de notas (restaura placeholder)."""
         current_text = self.notes_textbox.get("1.0", "end-1c").strip()
         if not current_text:
             self.notes_textbox.insert("1.0", "Observaciones adicionales...")
-            self.notes_textbox.configure(text_color="#6c757d") # Color gris placeholder
+            self.notes_textbox.configure(text_color="#6c757d")
 
     def get_notification_count(self):
         """Obtiene el número de notificaciones no leídas."""
-        try:
-            from model.alert_model import AlertModel
-            alert_model = AlertModel()
-            unread_alerts = alert_model.get_unread_alerts()
-            return len(unread_alerts) if unread_alerts else 0
-        except Exception as e:
-            print(f"Error al contar notificaciones: {e}")
-            return 0
+        return alert_manager.get_unread_count()
+
+    # Métodos de paginación adicionales
+    def previous_page(self):
+        """Va a la página anterior."""
+        if self.current_page > 1:
+            self.current_page -= 1
+            self.load_movements()
+
+    def next_page(self):
+        """Va a la página siguiente."""
+        total_pages = (self.total_movements + self.movements_per_page - 1) // self.movements_per_page
+        if self.current_page < total_pages:
+            self.current_page += 1
+            self.load_movements()
+
+    def go_to_page(self, page_num):
+        """Va a una página específica."""
+        total_pages = (self.total_movements + self.movements_per_page - 1) // self.movements_per_page
+        if 1 <= page_num <= total_pages:
+            self.current_page = page_num
+            self.load_movements()

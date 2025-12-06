@@ -33,9 +33,9 @@
     "datetime_format": "%d/%m/%Y %H:%M:%S",
     "decimal_places": 2,
     "colors": {
-      "primary": "#0AB7F3",
-      "secondary": "#0AB7F3",
-      "sidebar": "#0AB7F3"
+      "primary": "#00B4D8",
+      "secondary": "#10B981",
+      "sidebar": "#1E293B"
     }
   },
   "alerts": {
