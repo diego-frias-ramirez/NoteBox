@@ -1175,16 +1175,16 @@ class InventoryView(BaseView):
 
     def get_notification_count(self):
         """Obtiene el número de notificaciones no leídas."""
-<<<<<<< HEAD
         try:
-            from model.alert_model import AlertModel
-            alert_model = AlertModel()
-            unread_alerts = alert_model.get_unread_alerts()
-            return len(unread_alerts) if unread_alerts else 0
-        except Exception as e:
-            from utils.logger import Logger
-            Logger.log_error_exception(e, "INVENTORY_VIEW")
-            return 0
-=======
-        return alert_manager.get_unread_count()
->>>>>>> 763a8ee6d664848d90df0a0c30a87f817d9fe02c
+            from utils.alerts import alert_manager
+            return alert_manager.get_unread_count()
+        except Exception:
+            try:
+                from model.alert_model import AlertModel
+                alert_model = AlertModel()
+                unread_alerts = alert_model.get_unread_alerts()
+                return len(unread_alerts) if unread_alerts else 0
+            except Exception as e:
+                from utils.logger import Logger
+                Logger.log_error_exception(e, "INVENTORY_VIEW")
+                return 0
