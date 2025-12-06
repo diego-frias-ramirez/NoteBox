@@ -7,6 +7,7 @@ import re
 import json
 import os # <-- Añade esta línea
 from datetime import datetime
+from utils.logger import Logger
 
 class Validators:
     """Clase con métodos de validación para diferentes tipos de datos"""
@@ -20,13 +21,13 @@ class Validators:
             settings = json.load(f)
         validations = settings['validations']
     except FileNotFoundError:
-        print(f"Error: No se encontró el archivo {APP_SETTINGS_FILE}")
+        Logger.error(f"No se encontró el archivo {APP_SETTINGS_FILE}", "VALIDATORS")
         validations = {} # <-- Fallback a un diccionario vacío
     except json.JSONDecodeError:
-        print(f"Error: El archivo {APP_SETTINGS_FILE} no tiene un formato JSON válido.")
+        Logger.error(f"El archivo {APP_SETTINGS_FILE} no tiene un formato JSON válido.", "VALIDATORS")
         validations = {} # <-- Fallback a un diccionario vacío
     except KeyError:
-        print(f"Error: La clave 'validations' no se encontró en {APP_SETTINGS_FILE}")
+        Logger.error(f"La clave 'validations' no se encontró en {APP_SETTINGS_FILE}", "VALIDATORS")
         validations = {} # <-- Fallback a un diccionario vacío
 
 

@@ -5,6 +5,7 @@ Definición de temas visuales
 
 from assets.styles.colors import Colors
 from assets.styles.fonts import Fonts
+from utils.logger import Logger
 
 class ThemeManager:
     """Clase para gestionar los temas del sistema."""
@@ -85,7 +86,7 @@ class ThemeManager:
         if theme_name in cls.THEMES:
             cls.current_theme = theme_name
         else:
-            print(f"Tema '{theme_name}' no encontrado. Usando 'light' por defecto.")
+            Logger.warning(f"Tema '{theme_name}' no encontrado. Usando 'light' por defecto.", "THEME_MANAGER")
             cls.current_theme = "light"
     
     @classmethod

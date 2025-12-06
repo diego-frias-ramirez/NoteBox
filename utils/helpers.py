@@ -6,6 +6,7 @@ Funciones auxiliares generales
 import os
 import json
 from datetime import datetime, timedelta
+from utils.logger import Logger
 
 class Helpers:
     """Clase con funciones auxiliares del sistema"""
@@ -26,13 +27,13 @@ class Helpers:
             with open(config_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except FileNotFoundError:
-            print(f"Error: No se encontró el archivo de configuración en {config_path}")
+            Logger.error(f"No se encontró el archivo de configuración en {config_path}", "HELPERS")
             return {}
         except json.JSONDecodeError:
-            print(f"Error: El archivo {config_path} no es un JSON válido.")
+            Logger.error(f"El archivo {config_path} no es un JSON válido.", "HELPERS")
             return {}
         except Exception as e:
-            print(f"Error inesperado al cargar la configuración: {e}")
+            Logger.log_error_exception(e, "HELPERS")
             return {}
 
     @staticmethod

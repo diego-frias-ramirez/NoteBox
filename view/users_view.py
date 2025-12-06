@@ -930,9 +930,9 @@ class UsersView(BaseView):
             )
             
             if confirmed:
-                print(f"[DEBUG] Eliminando usuario ID: {user['id']}, nombre: {user['nombre']}")
+                Logger.debug(f"Eliminando usuario ID: {user['id']}, nombre: {user['nombre']}", "USERS_VIEW")
                 success, message = self.controller.delete_user(user['id'])
-                print(f"[DEBUG] Resultado: success={success}, message={message}")
+                Logger.debug(f"Resultado eliminación: success={success}, message={message}", "USERS_VIEW")
                 
                 if success:
                     Logger.success(f"Usuario {user['id']} eliminado", "USERS_VIEW")
@@ -947,7 +947,6 @@ class UsersView(BaseView):
                     Logger.error(f"Error al eliminar usuario {user['id']}: {message}", "USERS_VIEW")
                     self.show_message(f"Error al eliminar: {message}", "error")
         except Exception as e:
-            print(f"[DEBUG] Exception en delete_user: {e}")
             Logger.log_error_exception(e, "USERS_VIEW")
             self.show_message(f"Error inesperado al eliminar: {str(e)}", "error")
 
@@ -959,5 +958,6 @@ class UsersView(BaseView):
             unread_alerts = alert_model.get_unread_alerts()
             return len(unread_alerts) if unread_alerts else 0
         except Exception as e:
-            print(f"Error al contar notificaciones: {e}")
+            from utils.logger import Logger
+            Logger.log_error_exception(e, "USERS_VIEW")
             return 0

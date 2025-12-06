@@ -20,6 +20,8 @@ class AlertManager:
 
     def __init__(self):
         self.alert_model = AlertModel()
+        # Listeners to notify when a new alert is created: functions accepting one arg (alert dict)
+        self._listeners = []
 
     def show_info(self, title, message):
         """Muestra un mensaje informativo"""
@@ -182,6 +184,14 @@ class AlertManager:
             if not self.alert_model.check_existing_alert(tipo_alerta, product['id'], hours=24):
                 # Crear alerta en la base de datos usando el modelo
                 alert_id = self.alert_model.create_alert(tipo=tipo_alerta, producto_id=product['id'], descripcion=descripcion)
+                if alert_id:
+                    alert = {
+                        'id': alert_id,
+                        'tipo': tipo_alerta,
+                        'producto_id': product['id'],
+                        'descripcion': descripcion
+                    }
+                    self._notify_listeners(alert)
                 return alert_id
             else:
                 # Ya existe una alerta similar reciente, no crear duplicado
@@ -207,6 +217,14 @@ class AlertManager:
             if not self.alert_model.check_existing_alert(tipo_alerta, product['id'], hours=48):
                 # Crear alerta en la base de datos usando el modelo
                 alert_id = self.alert_model.create_alert(tipo=tipo_alerta, producto_id=product['id'], descripcion=descripcion)
+                if alert_id:
+                    alert = {
+                        'id': alert_id,
+                        'tipo': tipo_alerta,
+                        'producto_id': product['id'],
+                        'descripcion': descripcion
+                    }
+                    self._notify_listeners(alert)
                 return alert_id
 
         return None  # No se generó alerta
@@ -241,8 +259,64 @@ class AlertManager:
             producto_id=product['id'],
             descripcion=descripcion
         )
-        
+        if alert_id:
+            alert = {
+                'id': alert_id,
+                'tipo': tipo_alerta,
+                'producto_id': product['id'],
+                'descripcion': descripcion
+            }
+            self._notify_listeners(alert)
+
         return alert_id
+
+    # --- Listener management for real-time UI updates ---
+    def add_listener(self, fn):
+        """Añade un listener que será llamado con (alert_dict) cuando se cree una alerta."""
+        try:
+            if callable(fn):
+                self._listeners.append(fn)
+                return True
+        except Exception:
+            pass
+        return False
+
+    def remove_listener(self, fn):
+        """Remueve un listener previamente registrado."""
+        try:
+            if fn in self._listeners:
+                self._listeners.remove(fn)
+                return True
+        except Exception:
+            pass
+        return False
+
+    def _notify_listeners(self, alert):
+        """Notifica a todos los listeners registrados sobre una nueva alerta."""
+        for fn in list(self._listeners):
+            try:
+                # Call listener; listeners should schedule UI updates via after()
+                fn(alert)
+            except Exception:
+                # No queremos que un listener falle rompa el flujo
+                Logger.log_error_exception(Exception("Listener error"), "ALERT_MANAGER")
+
+    def broadcast_count_update(self):
+        """Notifica a los listeners que el conteo de alertas ha cambiado.
+
+        Envía un mensaje con {'type': 'count_update', 'count': <n>} para que
+        las vistas puedan actualizar el badge inmediatamente.
+        """
+        try:
+            cnt = self.get_unread_count()
+            msg = {'type': 'count_update', 'count': cnt}
+            for fn in list(self._listeners):
+                try:
+                    fn(msg)
+                except Exception:
+                    Logger.log_error_exception(Exception("Listener error broadcast"), "ALERT_MANAGER")
+        except Exception as e:
+            Logger.log_error_exception(e, "ALERT_MANAGER")
 
     def get_active_alerts(self):
         """

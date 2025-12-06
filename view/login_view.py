@@ -5,6 +5,7 @@ NoteBox - Vista del Login
 import customtkinter as ctk
 from PIL import Image
 import os
+from utils.logger import Logger
 
 # Configuración del tema
 ctk.set_appearance_mode("light")
@@ -50,8 +51,8 @@ class NoteBoxLogin(ctk.CTk):
             img = Image.open(logo_path)
             return ctk.CTkImage(light_image=img, dark_image=img, size=(80, 80))
         except FileNotFoundError:
-            print(f"Logo no encontrado en: {logo_path}")
-            print("Asegúrate de tener la imagen en assets/icons/logo.png")
+            Logger.warning(f"Logo no encontrado en: {logo_path}", "LOGIN_VIEW")
+            Logger.info("Asegúrate de tener la imagen en assets/icons/logo.png", "LOGIN_VIEW")
             return None
     
     def create_widgets(self):

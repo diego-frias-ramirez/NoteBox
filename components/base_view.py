@@ -10,6 +10,7 @@ import customtkinter as ctk
 from components.sidebar import Sidebar
 from components.header import Header
 import os
+from utils.logger import Logger
 
 class BaseView(ctk.CTk):
     """Clase base para todas las vistas con sidebar y header."""
@@ -77,6 +78,57 @@ class BaseView(ctk.CTk):
             notification_count=self.get_notification_count()
         )
         self.header.pack(fill="x")
+        # Start polling notifications to update header badge in real-time
+        try:
+            # initialize poller id
+            self._poller_id = None
+            self.start_notification_poller()
+        except Exception:
+            self._poller_id = None
+            pass
+        # Register for immediate alert notifications (real-time updates)
+        try:
+            from utils.alerts import alert_manager
+            # add a listener that increments the header badge when a new alert arrives
+            def _listener(alert):
+                try:
+                    # If it's a broadcast count update, set exactly that count
+                    if isinstance(alert, dict) and alert.get('type') == 'count_update':
+                        cnt = alert.get('count', None)
+                        if cnt is not None:
+                            try:
+                                self.after(20, lambda: self.header.update_notifications(cnt))
+                            except Exception:
+                                pass
+                        return
+
+                    # Regular alert item -> increment the badge visually (schedule on mainloop)
+                    def _inc():
+                        try:
+                            current = getattr(self.header, 'notification_count', None)
+                            if current is None:
+                                self.header.update_notifications(self.get_notification_count())
+                            else:
+                                self.header.update_notifications(current + 1)
+                        except Exception:
+                            try:
+                                self.header.update_notifications(self.get_notification_count())
+                            except Exception:
+                                pass
+
+                    try:
+                        self.after(20, _inc)
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+            # store listener to remove later
+            self._alert_listener = _listener
+            alert_manager.add_listener(self._alert_listener)
+        except Exception:
+            self._alert_listener = None
+            pass
         
         # ===== CONTENT AREA (Área de contenido) =====
         self.content_frame = ctk.CTkScrollableFrame(
@@ -209,16 +261,23 @@ class BaseView(ctk.CTk):
             notifications = alert_model.get_unread_alerts()
             
             
-            if not notifications:
-                no_notif_label = ctk.CTkLabel(
-                    content_frame,
-                    text="No hay notificaciones nuevas",
-                    font=ctk.CTkFont(size=14),
-                    text_color="#6B7280"
-                )
-                no_notif_label.pack(expand=True)
-            else:
-                for alert in notifications:
+            def populate_notifications():
+                # Limpiar contenido previo
+                for w in content_frame.winfo_children():
+                    w.destroy()
+
+                notifs = alert_model.get_unread_alerts()
+                if not notifs:
+                    no_notif_label = ctk.CTkLabel(
+                        content_frame,
+                        text="No hay notificaciones nuevas",
+                        font=ctk.CTkFont(size=14),
+                        text_color="#6B7280"
+                    )
+                    no_notif_label.pack(expand=True)
+                    return
+
+                for alert in notifs:
                     # Frame para cada notificación
                     notif_frame = ctk.CTkFrame(
                         content_frame,
@@ -228,12 +287,8 @@ class BaseView(ctk.CTk):
                         border_color="#E2E8F0"
                     )
                     notif_frame.pack(fill="x", pady=8)
-                    
-                    # Contenido
                     inner_frame = ctk.CTkFrame(notif_frame, fg_color="transparent")
                     inner_frame.pack(fill="both", expand=True, padx=12, pady=12)
-                    
-                    # Tipo de alerta
                     tipo_label = ctk.CTkLabel(
                         inner_frame,
                         text=f"[{alert.get('tipo', 'General')}]",
@@ -241,8 +296,6 @@ class BaseView(ctk.CTk):
                         text_color="#00B4D8"
                     )
                     tipo_label.pack(anchor="w")
-                    
-                    # Descripción
                     desc_label = ctk.CTkLabel(
                         inner_frame,
                         text=alert.get('descripcion', 'Sin descripción'),
@@ -252,8 +305,6 @@ class BaseView(ctk.CTk):
                         justify="left"
                     )
                     desc_label.pack(anchor="w", pady=(5, 0))
-                    
-                    # Fecha
                     fecha_label = ctk.CTkLabel(
                         inner_frame,
                         text=alert.get('fecha_alerta', 'Fecha desconocida'),
@@ -261,6 +312,23 @@ class BaseView(ctk.CTk):
                         text_color="#9CA3AF"
                     )
                     fecha_label.pack(anchor="w", pady=(5, 0))
+
+            # Botón refrescar (junto al botón limpiar)
+            refresh_btn = ctk.CTkButton(
+                header_frame,
+                text="🔄",
+                command=lambda: populate_notifications(),
+                fg_color="#F1F5F9",
+                hover_color="#E2E8F0",
+                text_color="#475569",
+                height=35,
+                corner_radius=8,
+                width=48
+            )
+            refresh_btn.pack(side="right", padx=(0, 8), pady=12)
+
+            # Llenar inicialmente
+            populate_notifications()
                     
                     
         except Exception as e:
@@ -271,7 +339,7 @@ class BaseView(ctk.CTk):
                 text_color="#EF4444"
             )
             error_label.pack(expand=True)
-            print(f"Error en show_notifications: {e}")
+            Logger.log_error_exception(e, "BASE_VIEW")
         
         
         # Botón cerrar
@@ -301,17 +369,39 @@ class BaseView(ctk.CTk):
             if not confirm:
                 return
             
-            # Eliminar todas las alertas
+            # Marcar todas las alertas como leídas y luego eliminar las leídas
             alert_model = AlertModel()
+            marked = alert_model.mark_all_as_read()
+            # Luego eliminar las alertas (limpieza completa)
             deleted = alert_model.delete_read_alerts()
             
-            if deleted > 0:
+            if deleted > 0 or marked > 0:
                 messagebox.showinfo(
                     "Limpieza Completada",
                     f"Se eliminaron {deleted} notificaciones correctamente."
                 )
                 # Cerrar el popup
                 popup.destroy()
+                # Forzar actualización del badge a 0 para evitar que aparezca número rojo
+                try:
+                    try:
+                        self.header.update_notifications(0)
+                    except Exception:
+                        pass
+                    # Re-evaluar en breve el conteo real y actualizar (por si hay race-conditions)
+                    try:
+                        # Also notify alert_manager listeners so UI can react immediately
+                        try:
+                            from utils.alerts import alert_manager
+                            alert_manager.broadcast_count_update()
+                        except Exception:
+                            pass
+                        # Re-evaluar en breve el conteo real y actualizar (por si hay race-conditions)
+                        self.after(300, lambda: self.header.update_notifications(self.get_notification_count()))
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
             else:
                 messagebox.showinfo(
                     "Sin Notificaciones",
@@ -324,11 +414,72 @@ class BaseView(ctk.CTk):
                 "Error",
                 "No se pudieron eliminar las notificaciones."
             )
-            print(f"Error al limpiar notificaciones: {e}")
+            Logger.log_error_exception(e, "BASE_VIEW")
     
     def get_notification_count(self):
-        """Obtiene el número de notificaciones (sobreescribir en subclases)."""
-        return 0
+        """Obtiene el número de notificaciones no leídas desde el modelo de alertas."""
+        try:
+            from model.alert_model import AlertModel
+            alert_model = AlertModel()
+            unread = alert_model.get_unread_alerts()
+            return len(unread) if unread else 0
+        except Exception as e:
+            Logger.log_error_exception(e, "BASE_VIEW")
+            return 0
+
+    def start_notification_poller(self, interval_ms=5000):
+        """Inicia un poller que actualiza el contador de notificaciones en el header cada X ms."""
+        def _poll():
+            try:
+                cnt = self.get_notification_count()
+                try:
+                    if hasattr(self, 'header') and self.header:
+                        self.header.update_notifications(cnt)
+                except Exception:
+                    pass
+            except Exception as e:
+                Logger.log_error_exception(e, "BASE_VIEW")
+            finally:
+                try:
+                    # store id so it can be cancelled on destroy
+                    self._poller_id = self.after(interval_ms, _poll)
+                except Exception:
+                    self._poller_id = None
+                    pass
+        # Lanzar el primer poll y save id
+        try:
+            self._poller_id = self.after(interval_ms, _poll)
+        except Exception as e:
+            self._poller_id = None
+            Logger.log_error_exception(e, "BASE_VIEW")
     
     def run(self):
         self.mainloop()
+    def destroy(self):
+        """Limpia listeners registrados y destruye la ventana."""
+        try:
+            from utils.alerts import alert_manager
+            if hasattr(self, '_alert_listener') and self._alert_listener:
+                try:
+                    alert_manager.remove_listener(self._alert_listener)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        # Cancel notification poller if running to avoid after callbacks after destroy
+        try:
+            if hasattr(self, '_poller_id') and self._poller_id:
+                try:
+                    self.after_cancel(self._poller_id)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        try:
+            super().destroy()
+        except Exception:
+            # Fallback: call base destroy
+            try:
+                ctk.CTk.destroy(self)
+            except Exception:
+                pass

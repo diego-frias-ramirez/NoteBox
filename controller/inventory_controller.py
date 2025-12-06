@@ -446,16 +446,17 @@ if __name__ == "__main__":
     
     # Cargar resumen
     summary = controller.get_inventory_summary()
-    print("Resumen de inventario:", summary)
+    from utils.logger import Logger
+    Logger.info(f"Resumen de inventario: {summary}", "INVENTORY_CONTROLLER")
     
     # Cargar productos (primera página)
     products, total = controller.get_products()
-    print(f"Productos obtenidos (pág 1): {len(products)} de {total}")
+    Logger.info(f"Productos obtenidos (pág 1): {len(products)} de {total}", "INVENTORY_CONTROLLER")
     
     # Cargar categorías
     categories = controller.get_categories()
-    print(f"Categorías cargadas: {len(categories)}")
+    Logger.info(f"Categorías cargadas: {len(categories)}", "INVENTORY_CONTROLLER")
     
     # Cargar alertas
     alerts = controller.get_inventory_alerts()
-    print(f"Alertas de inventario: {alerts['total_alertas']}")
+    Logger.info(f"Alertas de inventario: {alerts['total_alertas']}", "INVENTORY_CONTROLLER")

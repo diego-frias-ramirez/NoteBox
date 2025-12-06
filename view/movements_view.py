@@ -765,5 +765,6 @@ class MovementsView(BaseView):
             unread_alerts = alert_model.get_unread_alerts()
             return len(unread_alerts) if unread_alerts else 0
         except Exception as e:
-            print(f"Error al contar notificaciones: {e}")
+            from utils.logger import Logger
+            Logger.log_error_exception(e, "MOVEMENTS_VIEW")
             return 0

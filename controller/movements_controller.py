@@ -17,6 +17,8 @@ from model.user_model import UserModel
 from utils.logger import Logger
 from utils.validators import Validators
 from datetime import datetime
+from utils.alerts import alert_manager
+from model.product_model import ProductModel
 
 class MovementsController:
     """Controlador para gestionar la lógica del módulo de movimientos."""
@@ -104,6 +106,34 @@ class MovementsController:
                 # Registrar acción
                 if self.current_user:
                     Logger.log_user_action("REGISTRAR_MOVIMIENTO", self.current_user['nombre'], details=f"ID: {movement_id}, Tipo: {movement_type}, Producto: {product_id}, Cantidad: {quantity}")
+                # Obtener producto actualizado y generar alertas en tiempo real
+                try:
+                    product_model = ProductModel()
+                    updated_product = product_model.get_product_by_id(product_id)
+                    if updated_product:
+                        # Generar alerta de movimiento y de stock si aplica
+                        try:
+                            alert_manager.generate_movement_alert(
+                                product=updated_product,
+                                movement_type=movement_type,
+                                quantity=quantity,
+                                reason=reason
+                            )
+                        except Exception as e:
+                            Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
+
+                        try:
+                            alert_manager.generate_stock_alert(updated_product)
+                        except Exception as e:
+                            Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
+
+                        # Broadcast new count to listeners so UI updates immediately
+                        try:
+                            alert_manager.broadcast_count_update()
+                        except Exception:
+                            pass
+                except Exception as e:
+                    Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
                 return True, f"Movimiento registrado correctamente (ID: {movement_id})"
             else:
                 final_error_msg = error_msg if error_msg else "No se pudo registrar el movimiento"
