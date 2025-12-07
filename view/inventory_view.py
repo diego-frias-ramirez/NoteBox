@@ -26,6 +26,8 @@ class InventoryView(BaseView):
         self.search_query = ""
         self.filter_category_id = None
         self.images = {}
+        self.filters_bar_frame = None  # Referencia al frame de filtros para actualizar
+        self.content_frame_ref = None  # Referencia al content_frame para actualizar filtros
 
         # Instancia del controlador
         self.controller = InventoryController()
@@ -43,6 +45,12 @@ class InventoryView(BaseView):
         """Crea el contenido específico del módulo de inventario."""
         # Frame principal para el contenido (heredado de BaseView)
         content_frame = self.content_frame
+        self.content_frame_ref = content_frame  # Guardar referencia
+
+        # Cargar categorías al inicio si no están cargadas
+        if not self.categories:
+            self.categories = self.controller.get_categories()
+            Logger.info(f"Categorías cargadas: {len(self.categories)}", "INVENTORY_VIEW")
 
         # Toolbar (buscador, filtros, botones)
         self.create_toolbar(content_frame)
@@ -151,94 +159,175 @@ class InventoryView(BaseView):
         self.load_products() # <-- Llamar a load_products para refrescar
 
     def open_filter_dialog(self):
-        """Abre un diálogo para seleccionar filtro por categoría."""
-        # Usar el controlador para obtener categorías
+        """Abre un diálogo para seleccionar filtro por categoría y orden."""
+        # Obtener categorías directamente del controlador para evitar duplicados
         categories_dict = self.controller.get_categories()
+        Logger.info(f"Categorías disponibles en diálogo: {len(categories_dict)}", "INVENTORY_VIEW")
 
         dialog = ctk.CTkToplevel(self)
-        dialog.title("Filtrar por Categoría")
-        dialog.geometry("300x350")
+        dialog.title("Filtros")
+        dialog.geometry("350x600")
         dialog.transient(self)
         dialog.grab_set()
+        dialog.resizable(False, True)
 
         # Centrar el diálogo
-        x = self.winfo_x() + (self.winfo_width() - 300) // 2
-        y = self.winfo_y() + (self.winfo_height() - 350) // 2
-        dialog.geometry(f"300x350+{x}+{y}")
+        x = self.winfo_x() + (self.winfo_width() - 350) // 2
+        y = self.winfo_y() + (self.winfo_height() - 600) // 2
+        dialog.geometry(f"350x600+{x}+{y}")
 
-        # Título
-        title_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        title_frame.pack(fill="x", pady=(15, 5))
+        # Frame principal scrollable
+        main_frame = ctk.CTkScrollableFrame(dialog, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=15, pady=15)
 
-        # Icono de filtro
-        filter_icon_path = os.path.join(self.base_path, "..", "assets", "icons", "filtro.png")
-        try:
-            img = Image.open(filter_icon_path)
-            img = img.resize((20, 20), Image.LANCZOS)
-            filter_icon = ctk.CTkImage(light_image=img, dark_image=img, size=(20, 20))
-            ctk.CTkLabel(title_frame, image=filter_icon, text="").pack(side="left", padx=(0, 10))
-        except:
-            ctk.CTkLabel(title_frame, text="⚙️", font=ctk.CTkFont(size=16)).pack(side="left", padx=(0, 10))
+        # === SECCIÓN DE CATEGORÍA ===
+        # Título Categoría
+        category_title_label = ctk.CTkLabel(
+            main_frame, 
+            text="Categoría", 
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#1E293B"
+        )
+        category_title_label.pack(fill="x", pady=(0, 10))
 
-        ctk.CTkLabel(title_frame, text="Seleccionar Categoría", font=ctk.CTkFont(size=16, weight="bold")).pack(side="left")
-
-        # Scrollable Frame para categorías
-        categories_scrollable = ctk.CTkScrollableFrame(dialog, fg_color="transparent")
-        categories_scrollable.pack(fill="both", expand=True, padx=20, pady=(0, 10))
-
-        # Variable para el radio button
+        # Variable para el radio button de categoría
         selected_category_id = ctk.StringVar(value="all") # Valor por defecto: "all"
 
         # Botón "Todos los productos"
         all_radio = ctk.CTkRadioButton(
-            categories_scrollable,
+            main_frame,
             text="Todos los productos",
             variable=selected_category_id,
-            value="all"
+            value="all",
+            font=ctk.CTkFont(size=12)
         )
-        all_radio.pack(anchor="w", padx=10, pady=5)
+        all_radio.pack(anchor="w", padx=0, pady=5)
 
-        # Iterar sobre las categorías del controlador
-        for cat_id, cat_data in categories_dict.items():
-            cat_radio = ctk.CTkRadioButton(
-                categories_scrollable,
-                text=cat_data['nombre'],
-                variable=selected_category_id,
-                value=str(cat_id) # Convertir ID a string para el radiobutton
+        # Iterar sobre las categorías
+        if categories_dict:
+            for cat_id, cat_data in categories_dict.items():
+                cat_name = cat_data.get('nombre', f'Categoría {cat_id}')
+                Logger.info(f"Agregando categoría: {cat_id} - {cat_name}", "INVENTORY_VIEW")
+                cat_radio = ctk.CTkRadioButton(
+                    main_frame,
+                    text=cat_name,
+                    variable=selected_category_id,
+                    value=str(cat_id),
+                    font=ctk.CTkFont(size=12)
+                )
+                cat_radio.pack(anchor="w", padx=0, pady=5)
+        else:
+            # Si no hay categorías, mostrar un mensaje
+            Logger.warning("No hay categorías disponibles", "INVENTORY_VIEW")
+            no_cat_label = ctk.CTkLabel(
+                main_frame,
+                text="No hay categorías disponibles",
+                font=ctk.CTkFont(size=11),
+                text_color="#94A3B8"
             )
-            cat_radio.pack(anchor="w", padx=10, pady=5)
+            no_cat_label.pack(anchor="w", padx=10, pady=10)
+
+        # Separador
+        separator = ctk.CTkFrame(main_frame, fg_color="#E2E8F0", height=1)
+        separator.pack(fill="x", pady=15)
+
+        # === SECCIÓN DE ORDEN ===
+        # Título Orden
+        order_title_label = ctk.CTkLabel(
+            main_frame, 
+            text="Ordenar por", 
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#1E293B"
+        )
+        order_title_label.pack(fill="x", pady=(0, 10))
+
+        # Variable para el radio button de orden
+        current_order = self.controller.get_filter_order()
+        selected_order = ctk.StringVar(value=current_order)
+
+        # Opciones de orden
+        order_options = [
+            ("Nombre (A-Z)", "nombre"),
+            ("Más Antiguo", "fecha_creacion_asc"),
+            ("Más Reciente", "fecha_creacion_desc")
+        ]
+
+        for label, value in order_options:
+            order_radio = ctk.CTkRadioButton(
+                main_frame,
+                text=label,
+                variable=selected_order,
+                value=value,
+                font=ctk.CTkFont(size=12)
+            )
+            order_radio.pack(anchor="w", padx=0, pady=5)
+
+        # Separator final
+        separator2 = ctk.CTkFrame(main_frame, fg_color="#E2E8F0", height=1)
+        separator2.pack(fill="x", pady=15)
+
+        # Botones de acción (frame fijo en la parte inferior)
+        buttons_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        buttons_frame.pack(fill="x", padx=15, pady=15)
+
+        # Botón Cancelar
+        cancel_btn = ctk.CTkButton(
+            buttons_frame,
+            text="Cancelar",
+            width=100,
+            height=35,
+            fg_color="#E2E8F0",
+            text_color="#1E293B",
+            hover_color="#CBD5E1",
+            corner_radius=8,
+            font=ctk.CTkFont(size=12),
+            command=dialog.destroy
+        )
+        cancel_btn.pack(side="left", padx=(0, 10))
 
         # Botón Aplicar
         def apply_filter():
+            # Aplicar filtro de categoría
             value = selected_category_id.get()
             if value == "all":
                 self.filter_category_id = None
             else:
-                self.filter_category_id = int(value) # Convertir de string a int
-            self.current_page = 1 # Reiniciar a la primera página al filtrar
-            self.load_products() # <-- Refrescar productos con el nuevo filtro
+                self.filter_category_id = int(value)
+            
+            # Aplicar filtro de orden
+            order_value = selected_order.get()
+            self.controller.set_filter_order(order_value)
+            
+            self.current_page = 1
+            self.load_products()
+            self.update_filters_bar()
             dialog.destroy()
 
         apply_btn = ctk.CTkButton(
-            dialog,
-            text="Aplicar Filtro",
+            buttons_frame,
+            text="Aplicar",
             width=100,
-            height=30,
+            height=35,
             fg_color="#00B4D8",
             text_color="#FFFFFF",
             hover_color="#0096B4",
             corner_radius=8,
+            font=ctk.CTkFont(size=12),
             command=apply_filter
         )
-        apply_btn.pack(pady=10)
+        apply_btn.pack(side="left")
 
     def create_filters_bar(self, parent):
         """Crea la barra de filtros activos."""
-        filters_frame = ctk.CTkFrame(parent, fg_color="transparent", height=35)
-        filters_frame.pack(fill="x", pady=(0, 15))
+        # Si ya existe un frame de filtros, destruirlo para recrearlo
+        if self.filters_bar_frame is not None:
+            self.filters_bar_frame.destroy()
+        
+        self.filters_bar_frame = ctk.CTkFrame(parent, fg_color="transparent", height=35)
+        self.filters_bar_frame.pack(fill="x", pady=(0, 15))
 
         ctk.CTkLabel(
-            filters_frame, text="Filtros activos:",
+            self.filters_bar_frame, text="Filtros activos:",
             font=ctk.CTkFont(size=12), text_color="#64748B"
         ).pack(side="left", padx=(0, 12))
 
@@ -251,7 +340,7 @@ class InventoryView(BaseView):
                     category_name = cat_data.get('nombre', 'Categoría sin nombre')
                     break
 
-            tag_frame = ctk.CTkFrame(filters_frame, fg_color="#E0F7FA", corner_radius=15, height=28)
+            tag_frame = ctk.CTkFrame(self.filters_bar_frame, fg_color="#E0F7FA", corner_radius=15, height=28)
             tag_frame.pack(side="left", padx=(0, 10))
             tag_frame.pack_propagate(False)
 
@@ -268,20 +357,50 @@ class InventoryView(BaseView):
                 command=self.clear_category_filter
             )
             remove_tag_btn.pack(side="left", padx=(0, 8))
-        else:
-            # Solo mostrar "Ningún filtro aplicado" si también la búsqueda está vacía
-            if not self.search_query.strip():  # <-- NUEVO: Verificar que la búsqueda esté vacía
+
+        # Mostrar filtro de orden si no está en el default (nombre)
+        current_order = self.controller.get_filter_order()
+        if current_order != "nombre":
+            # Mapear el valor interno al nombre mostrable
+            order_labels = {
+                "fecha_creacion_asc": "Más Antiguo",
+                "fecha_creacion_desc": "Más Reciente",
+                "nombre": "Nombre (A-Z)"
+            }
+            order_label = order_labels.get(current_order, current_order)
+
+            order_tag_frame = ctk.CTkFrame(self.filters_bar_frame, fg_color="#FCE4EC", corner_radius=15, height=28)
+            order_tag_frame.pack(side="left", padx=(0, 10))
+            order_tag_frame.pack_propagate(False)
+
+            ctk.CTkLabel(
+                order_tag_frame, text=f"Ordenar: {order_label}",
+                font=ctk.CTkFont(size=11), text_color="#E91E63"
+            ).pack(side="left", padx=(12, 5), pady=4)
+
+            # Botón para quitar el filtro de orden
+            remove_order_btn = ctk.CTkButton(
+                order_tag_frame, text="×", width=20, height=20,
+                fg_color="transparent", text_color="#E91E63",
+                hover_color="#F8BBD0", font=ctk.CTkFont(size=14),
+                command=self.clear_order_filter
+            )
+            remove_order_btn.pack(side="left", padx=(0, 8))
+
+        # Mostrar "Ningún filtro" solo si no hay filtros de categoría ni orden
+        if self.filter_category_id is None and current_order == "nombre":
+            if not self.search_query.strip():
                 ctk.CTkLabel(
-                    filters_frame, text="Ningún filtro aplicado",
+                    self.filters_bar_frame, text="Ningún filtro aplicado",
                     font=ctk.CTkFont(size=12), text_color="#94A3B8"
                 ).pack(side="left", padx=(0, 10))
 
-        # Botón para agregar más filtros (opcional)
+        # Botón para agregar más filtros
         ctk.CTkButton(
-            filters_frame, text="+ Agregar filtro",
+            self.filters_bar_frame, text="+ Agregar filtro",
             font=ctk.CTkFont(size=12), fg_color="transparent",
             text_color="#94A3B8", hover_color="#F1F5F9", width=110, height=28,
-            command=self.open_filter_dialog # <-- Reutilizar el diálogo existente
+            command=self.open_filter_dialog
         ).pack(side="left")
 
     def clear_category_filter(self):
@@ -289,6 +408,19 @@ class InventoryView(BaseView):
         self.filter_category_id = None
         self.current_page = 1
         self.load_products()
+        self.update_filters_bar()
+
+    def clear_order_filter(self):
+        """Limpia el filtro de orden."""
+        self.controller.set_filter_order("nombre")
+        self.current_page = 1
+        self.load_products()
+        self.update_filters_bar()
+
+    def update_filters_bar(self):
+        """Actualiza la barra de filtros activos."""
+        if self.filters_bar_frame is not None and self.content_frame_ref is not None:
+            self.create_filters_bar(self.content_frame_ref)
 
     def create_table(self, parent):
         """Crea la tabla de productos."""
@@ -620,19 +752,17 @@ class InventoryView(BaseView):
             products, total = self.controller.get_products(
                 page=self.current_page,
                 search=self.search_query,
-                category_id=self.filter_category_id
+                category_id=self.filter_category_id,
+                order_by=self.controller.get_filter_order()
             )
             self.products = products
             self.total_products = total
-
-            # Cargar categorías si aún no están cargadas
-            if not self.categories:
-                self.categories = self.controller.get_categories()
 
             # Actualizar UI
             self.update_table()
             self.update_pagination_label()
             self.update_page_buttons()
+            self.update_filters_bar()  # Actualizar barra de filtros
 
             Logger.info(f"Productos cargados: {len(products)} en página {self.current_page} de {total}", "INVENTORY_VIEW")
 
