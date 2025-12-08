@@ -21,7 +21,7 @@ class CategoryModel:
 
     def get_all_categories(self):
         """
-        Obtiene todas las categorías activas.
+        Obtiene todas las categorías activas (sin duplicados).
         
         Returns:
             list: Lista de diccionarios con datos de categorías o lista vacía.
@@ -34,8 +34,21 @@ class CategoryModel:
         """
         try:
             result = self.db.execute_query(query, fetch=True)
-            Logger.info(f"Obtenidas {len(result) if result else 0} categorías activas", "CATEGORY_MODEL")
-            return result if result else []
+            
+            # Deduplicar por nombre - mantener solo el primero
+            if result:
+                seen_names = set()
+                deduplicated = []
+                for cat in result:
+                    name = cat['nombre']
+                    if name not in seen_names:
+                        seen_names.add(name)
+                        deduplicated.append(cat)
+                
+                Logger.info(f"Obtenidas {len(deduplicated)} categorías activas (sin duplicados)", "CATEGORY_MODEL")
+                return deduplicated
+            
+            return []
         except Exception as e:
             Logger.error(f"Error obteniendo categorías activas: {e}", "CATEGORY_MODEL")
             return []
@@ -185,6 +198,55 @@ class CategoryModel:
             return count
         except Exception as e:
             Logger.error(f"Error contando categorías activas: {e}", "CATEGORY_MODEL")
+            return 0
+
+    def remove_duplicate_categories(self):
+        """
+        Elimina categorías duplicadas manteniéndose el registro más antiguo.
+        Útil para limpiar la base de datos.
+        
+        Returns:
+            int: Número de registros eliminados.
+        """
+        try:
+            # Obtener todas las categorías (incluyendo inactivas)
+            query = """
+                SELECT id, nombre FROM categorias 
+                ORDER BY fecha_creacion ASC
+            """
+            result = self.db.execute_query(query, fetch=True)
+            
+            if not result:
+                return 0
+            
+            # Encontrar duplicados
+            seen_names = {}
+            ids_to_delete = []
+            
+            for cat in result:
+                name = cat['nombre']
+                if name in seen_names:
+                    # Este es un duplicado, marcarlo para eliminar
+                    ids_to_delete.append(cat['id'])
+                else:
+                    # Primera vez que vemos este nombre
+                    seen_names[name] = cat['id']
+            
+            # Eliminar duplicados
+            deleted_count = 0
+            for cat_id in ids_to_delete:
+                delete_query = "DELETE FROM categorias WHERE id = %s"
+                rows = self.db.execute_query(delete_query, params=(cat_id,))
+                if rows > 0:
+                    deleted_count += 1
+            
+            if deleted_count > 0:
+                Logger.success(f"Se eliminaron {deleted_count} categorías duplicadas", "CATEGORY_MODEL")
+            
+            return deleted_count
+            
+        except Exception as e:
+            Logger.error(f"Error eliminando categorías duplicadas: {e}", "CATEGORY_MODEL")
             return 0
 
 if __name__ == "__main__":
