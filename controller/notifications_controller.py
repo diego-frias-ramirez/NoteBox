@@ -1,7 +1,6 @@
 # controller/notifications_controller.py
 
 import mysql.connector
-from utils.logger import Logger
 from datetime import datetime, timedelta
 
 class NotificationsController:
@@ -42,8 +41,7 @@ class NotificationsController:
             }
             
         except Exception as e:
-            Logger.log_error_exception(e, "NOTIFICATIONS_CONTROLLER")
-            return {'total': 0, 'no_leidas': 0, 'advertencias': 0, 'criticas': 0}
+            print(f"Error obteniendo resumen de notificaciones: {e}")
             return {'total': 0, 'no_leidas': 0, 'advertencias': 0, 'criticas': 0}
     
     def get_all_notifications(self, filter_type="all"):
@@ -95,7 +93,7 @@ class NotificationsController:
             return formatted_notifications
             
         except Exception as e:
-            Logger.log_error_exception(e, "NOTIFICATIONS_CONTROLLER")
+            print(f"Error obteniendo notificaciones: {e}")
             return []
     
     def _format_notification(self, notification):
@@ -178,7 +176,7 @@ class NotificationsController:
             
             return True
         except Exception as e:
-            Logger.log_error_exception(e, "NOTIFICATIONS_CONTROLLER")
+            print(f"Error marcando notificación como leída: {e}")
             return False
     
     def mark_all_as_read(self):
@@ -196,7 +194,7 @@ class NotificationsController:
             
             return True
         except Exception as e:
-            Logger.log_error_exception(e, "NOTIFICATIONS_CONTROLLER")
+            print(f"Error marcando todas como leídas: {e}")
             return False
     
     def delete_notification(self, notification_id):
@@ -214,7 +212,7 @@ class NotificationsController:
             
             return True
         except Exception as e:
-            Logger.log_error_exception(e, "NOTIFICATIONS_CONTROLLER")
+            print(f"Error eliminando notificación: {e}")
             return False
     
     def clear_all_notifications(self):
@@ -232,7 +230,7 @@ class NotificationsController:
             
             return True
         except Exception as e:
-            Logger.log_error_exception(e, "NOTIFICATIONS_CONTROLLER")
+            print(f"Error limpiando notificaciones: {e}")
             return False
     
     def get_notification_settings(self):
@@ -257,7 +255,7 @@ class NotificationsController:
             }
             
         except Exception as e:
-            Logger.log_error_exception(e, "NOTIFICATIONS_CONTROLLER")
+            print(f"Error obteniendo configuración: {e}")
             return {
                 'stock_alerts': True,
                 'no_movement': True,
@@ -268,10 +266,10 @@ class NotificationsController:
         """Actualizar configuración de notificaciones"""
         try:
             # En una implementación real, esto actualizaría la tabla de configuración
-            Logger.info(f"Configuración actualizada: {settings}", "NOTIFICATIONS_CONTROLLER")
+            print(f"Configuración actualizada: {settings}")
             return True
         except Exception as e:
-            Logger.log_error_exception(e, "NOTIFICATIONS_CONTROLLER")
+            print(f"Error actualizando configuración: {e}")
             return False
     
     # generate_sample_notifications removed to enforce real notifications

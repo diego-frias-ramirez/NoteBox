@@ -191,7 +191,6 @@ if __name__ == "__main__":
     # Prueba rápida
     cm = CategoryModel()
     cats = cm.get_all_categories()
-    from utils.logger import Logger
-    Logger.info(f"Categorías activas: {len(cats)}", "CATEGORY_MODEL")
+    print(f"Categorías activas: {len(cats)}")
     for c in cats:
-        Logger.info(f"- {c['id']}: {c['nombre']} - Activo: {c['activo']}", "CATEGORY_MODEL")
+        print(f"- {c['id']}: {c['nombre']} - Activo: {c['activo']}")

@@ -67,11 +67,7 @@ class Header(ctk.CTkFrame):
             ctk_img = ctk.CTkImage(light_image=img, dark_image=img)
             return ctk_img
         except FileNotFoundError:
-            try:
-                from utils.logger import Logger
-                Logger.error(f"Ícono de notificación no encontrado en {icon_path}", "HEADER")
-            except Exception:
-                pass
+            print(f"Error: Ícono de notificación no encontrado en {icon_path}")
             return None
     
     def create_header(self):

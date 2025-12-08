@@ -1084,9 +1084,10 @@ class UsersView(BaseView):
 
             if not alert_manager.confirm_delete(f"el usuario '{user['nombre']}'", self):
                 return
+            
             Logger.info(f"Eliminando usuario ID: {user['id']}, nombre: {user['nombre']}", "USERS_VIEW")
             success, message = self.controller.delete_user(user['id'])
-
+            
             if success:
                 Logger.success(f"Usuario {user['id']} eliminado", "USERS_VIEW")
                 # Refrescar lista de usuarios
@@ -1099,6 +1100,7 @@ class UsersView(BaseView):
             else:
                 Logger.error(f"Error al eliminar usuario {user['id']}: {message}", "USERS_VIEW")
                 alert_manager.error_delete(self)
+                
         except Exception as e:
             Logger.log_error_exception(e, "USERS_VIEW")
             alert_manager.show_error(
@@ -1109,15 +1111,4 @@ class UsersView(BaseView):
 
     def get_notification_count(self):
         """Obtiene el número de notificaciones no leídas."""
-        try:
-            from utils.alerts import alert_manager
-            return alert_manager.get_unread_count()
-        except Exception:
-            try:
-                from model.alert_model import AlertModel
-                alert_model = AlertModel()
-                unread_alerts = alert_model.get_unread_alerts()
-                return len(unread_alerts) if unread_alerts else 0
-            except Exception as e:
-                Logger.log_error_exception(e, "USERS_VIEW")
-                return 0
+        return alert_manager.get_unread_count()

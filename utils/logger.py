@@ -34,8 +34,6 @@ class Logger:
     ERROR = "ERROR"
     DEBUG = "DEBUG"
     SUCCESS = "SUCCESS"
-    # Controla si los mensajes también se imprimen en consola
-    PRINT_TO_CONSOLE = False
     
     @staticmethod
     def _ensure_log_dir():
@@ -70,17 +68,12 @@ class Logger:
                 f.write(formatted_message)
             
             # Imprimir en consola si se especifica
-            if Logger.PRINT_TO_CONSOLE or print_console:
+            if print_console:
                 print(formatted_message.strip())
             
             return True
         except Exception as e:
-            # Avoid printing to console by default; still write to stderr if needed
-            try:
-                import sys
-                sys.stderr.write(f"Error al escribir log: {e}\n")
-            except Exception:
-                pass
+            print(f"Error al escribir log: {e}")
             return False
     
     @staticmethod

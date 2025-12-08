@@ -5,7 +5,6 @@ Ubicación: components/sidebar.py
 
 import customtkinter as ctk
 from PIL import Image
-from utils.logger import Logger
 import os
 
 class Sidebar(ctk.CTkFrame):
@@ -73,7 +72,7 @@ class Sidebar(ctk.CTkFrame):
             img = Image.open(logo_path)
             return ctk.CTkImage(light_image=img, dark_image=img, size=(40, 40))
         except FileNotFoundError:
-            Logger.warning(f"Logo no encontrado en {logo_path}", "SIDEBAR")
+            print(f"Error: Logo no encontrado en {logo_path}")
             return None
 
     def load_icon(self, icon_filename):
@@ -85,7 +84,7 @@ class Sidebar(ctk.CTkFrame):
             ctk_img = ctk.CTkImage(light_image=img, dark_image=img)
             return ctk_img
         except FileNotFoundError:
-            Logger.warning(f"Ícono no encontrado en {icon_path}", "SIDEBAR")
+            print(f"Error: Ícono no encontrado en {icon_path}")
             return None
 
     def create_sidebar(self):

@@ -34,8 +34,8 @@
     "decimal_places": 2,
     "colors": {
       "primary": "#00B4D8",
-      "secondary": "#10B981",
-      "sidebar": "#1E293B"
+      "secondary": "#00B4D8",
+      "sidebar": "#00B4D8"
     }
   },
   "alerts": {

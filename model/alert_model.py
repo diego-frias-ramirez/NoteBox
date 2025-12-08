@@ -245,26 +245,3 @@ class AlertModel:
         except Exception as e:
             Logger.log_error_exception(e, "ALERT_MODEL")
             return 0
-
-    @staticmethod
-    def mark_all_as_read():
-        """
-        Marca todas las alertas como leídas.
-
-        Returns:
-            int: Número de filas afectadas.
-        """
-        query = """
-            UPDATE alertas
-            SET leida = TRUE
-            WHERE leida = FALSE
-        """
-        try:
-            result = Database.execute_query(query)
-            if result:
-                Logger.log_database_operation("UPDATE", "alertas", True, f"{result} alertas marcadas como leídas")
-                return result
-            return 0
-        except Exception as e:
-            Logger.log_error_exception(e, "ALERT_MODEL")
-            return 0

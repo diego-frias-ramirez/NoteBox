@@ -939,20 +939,7 @@ class MovementsView(BaseView):
 
     def get_notification_count(self):
         """Obtiene el número de notificaciones no leídas."""
-        try:
-            # Preferir el manager central de alertas si está disponible
-            from utils.alerts import alert_manager
-            return alert_manager.get_unread_count()
-        except Exception:
-            try:
-                from model.alert_model import AlertModel
-                alert_model = AlertModel()
-                unread_alerts = alert_model.get_unread_alerts()
-                return len(unread_alerts) if unread_alerts else 0
-            except Exception as e:
-                from utils.logger import Logger
-                Logger.log_error_exception(e, "MOVEMENTS_VIEW")
-                return 0
+        return alert_manager.get_unread_count()
 
     # Métodos de paginación adicionales
     def previous_page(self):
