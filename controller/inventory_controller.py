@@ -31,7 +31,6 @@ class InventoryController:
         self.products_per_page = 7
         self.search_query = ""
         self.filter_category_id = None
-        self.filter_order = "nombre"  # Por defecto ordenar por nombre
 
     def set_current_user(self, user_data):
         """Establece el usuario actual para auditoría."""
@@ -47,7 +46,7 @@ class InventoryController:
             Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return {}
 
-    def get_products(self, page=None, search="", category_id=None, order_by=None):
+    def get_products(self, page=None, search="", category_id=None):
         """
         Obtiene productos con paginación y filtros.
         
@@ -55,7 +54,6 @@ class InventoryController:
             page (int): Número de página (opcional, usa self.current_page si no se pasa).
             search (str): Término de búsqueda.
             category_id (int): ID de categoría para filtrar.
-            order_by (str): Campo para ordenar ('nombre', 'fecha_creacion_asc', 'fecha_creacion_desc').
         
         Returns:
             tuple: (lista de productos, total de productos).
@@ -67,14 +65,12 @@ class InventoryController:
             # Si se pasa search o category_id, usarlos temporalmente
             final_search = search if search else self.search_query
             final_category_id = category_id if category_id is not None else self.filter_category_id
-            final_order_by = order_by if order_by is not None else self.filter_order
 
             products = self.product_model.get_products(
                 search=final_search,
                 category_id=final_category_id,
                 limit=self.products_per_page,
-                offset=offset,
-                order_by=final_order_by
+                offset=offset
             )
             total = self.product_model.get_total_products(
                 search=final_search,
@@ -431,15 +427,6 @@ class InventoryController:
         """Establece el filtro de categoría."""
         self.filter_category_id = category_id
         self.current_page = 1 # Reiniciar a la primera página al filtrar
-
-    def set_filter_order(self, order_by):
-        """Establece el filtro de orden."""
-        self.filter_order = order_by
-        self.current_page = 1 # Reiniciar a la primera página al cambiar el orden
-
-    def get_filter_order(self):
-        """Obtiene el orden actual."""
-        return self.filter_order
 
     def set_current_page(self, page):
         """Establece la página actual."""

@@ -54,7 +54,7 @@ class ProductModel:
             Logger.log_error_exception(e, "PRODUCT_MODEL")
             return 0
 
-    def get_products(self, search="", category_id=None, limit=10, offset=0, order_by="nombre"):
+    def get_products(self, search="", category_id=None, limit=10, offset=0):
         """
         Obtiene productos activos con filtros y paginación.
         
@@ -63,7 +63,6 @@ class ProductModel:
             category_id (int): ID de categoría para filtrar.
             limit (int): Límite de resultados por página.
             offset (int): Offset para paginación.
-            order_by (str): Campo para ordenar ('nombre', 'fecha_creacion_asc', 'fecha_creacion_desc').
         
         Returns:
             list: Lista de productos activos.
@@ -94,15 +93,7 @@ class ProductModel:
         if where_conditions:
             query += " AND " + " AND ".join(where_conditions)
         
-        # Agregar ordenamiento según parámetro
-        if order_by == "fecha_creacion_asc":
-            query += " ORDER BY p.fecha_creacion ASC"
-        elif order_by == "fecha_creacion_desc":
-            query += " ORDER BY p.fecha_creacion DESC"
-        else:
-            query += " ORDER BY p.nombre ASC"
-        
-        query += " LIMIT %s OFFSET %s"
+        query += " ORDER BY p.nombre ASC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
         
         try:
