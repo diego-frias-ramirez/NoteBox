@@ -733,6 +733,24 @@ class UsersView(BaseView):
                 )
                 return
 
+
+            # Validar formato de nombre (solo letras y espacios)
+            import re
+            if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", name):
+                alert_manager.validation_error(
+                    "El nombre solo puede contener letras y espacios.",
+                    self
+                )
+                return
+
+            # Validar formato de usuario (letras y números)
+            if not re.match(r"^[a-zA-Z0-9]+$", username):
+                alert_manager.validation_error(
+                    "El usuario solo puede contener letras y números (sin espacios ni símbolos).",
+                    self
+                )
+                return
+
             # Obtener el ID del rol
             role_id = None
             for rid, role_data in self.user_roles.items():

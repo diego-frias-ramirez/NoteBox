@@ -101,7 +101,7 @@ class MovementModel:
             FROM movimientos m
             JOIN productos p ON m.producto_id = p.id
             JOIN usuarios u ON m.usuario_id = u.id
-            ORDER BY m.fecha DESC
+            ORDER BY m.id DESC
             LIMIT %s OFFSET %s
         """
         try:
@@ -126,7 +126,7 @@ class MovementModel:
             FROM movimientos m
             JOIN productos p ON m.producto_id = p.id
             JOIN usuarios u ON m.usuario_id = u.id
-            ORDER BY m.fecha DESC
+            ORDER BY m.id DESC
         """
         try:
             result = self.db.execute_query(query, fetch=True)
@@ -155,7 +155,7 @@ class MovementModel:
             JOIN productos p ON m.producto_id = p.id
             JOIN usuarios u ON m.usuario_id = u.id
             WHERE m.producto_id = %s
-            ORDER BY m.fecha DESC
+            ORDER BY m.id DESC
         """
         try:
             result = self.db.execute_query(query, params=(product_id,), fetch=True)

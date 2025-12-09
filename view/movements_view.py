@@ -519,19 +519,24 @@ class MovementsView(BaseView):
             tree_frame = ctk.CTkFrame(win, fg_color="#FFFFFF")
             tree_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
-            # Treeview
+            # Treeview y Scrollbars usando grid para mejor control
+            tree_frame.grid_columnconfigure(0, weight=1)
+            tree_frame.grid_rowconfigure(0, weight=1)
+
             cols = ("id", "tipo", "producto", "cantidad", "motivo", "notas", "fecha", "usuario")
             tree = ttk.Treeview(tree_frame, columns=cols, show="headings", height=20)
-            tree.pack(side="left", fill="both", expand=True)
-
+            
             # Scrollbars
             vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
-            vsb.pack(side="right", fill="y")
-            tree.configure(yscrollcommand=vsb.set)
-
             hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=tree.xview)
-            hsb.pack(side="bottom", fill="x")
-            tree.configure(xscrollcommand=hsb.set)
+            
+            # Configurar comandos de scroll del tree
+            tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+            
+            # Grid layout
+            tree.grid(row=0, column=0, sticky="nsew")
+            vsb.grid(row=0, column=1, sticky="ns")
+            hsb.grid(row=1, column=0, sticky="ew")
 
             # Configurar columnas
             tree.heading("id", text="ID")

@@ -155,3 +155,61 @@ class MovementsController:
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
             return []
+
+    def export_movements(self, movements_data):
+        """
+        Exporta los movimientos a un archivo CSV.
+        
+        Args:
+            movements_data (list): Lista de diccionarios con datos de movimientos.
+            
+        Returns:
+            tuple: (success, message_or_path)
+        """
+        import csv
+        
+        try:
+            # Crear directorio de exports si no existe
+            export_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'exports')
+            if not os.path.exists(export_dir):
+                os.makedirs(export_dir)
+                
+            # Generar nombre de archivo único
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"movimientos_{timestamp}.csv"
+            filepath = os.path.join(export_dir, filename)
+            
+            # Definir encabezados
+            headers = ["ID", "Tipo", "Producto", "Cantidad", "Motivo", "Fecha", "Usuario", "Notas"]
+            
+            with open(filepath, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(headers)
+                
+                for m in movements_data:
+                    # Formatear fecha
+                    fecha_str = ""
+                    if m.get("fecha"):
+                        if isinstance(m.get("fecha"), str):
+                             fecha_str = m.get("fecha")
+                        else:
+                             fecha_str = m.get("fecha").strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    row = [
+                        m.get("id"),
+                        m.get("tipo"),
+                        m.get("producto_nombre"),
+                        m.get("cantidad"),
+                        m.get("motivo"),
+                        fecha_str,
+                        m.get("usuario_nombre"),
+                        m.get("notas", "")
+                    ]
+                    writer.writerow(row)
+                    
+            Logger.success(f"Movimientos exportados a {filepath}", "MOVEMENTS_CONTROLLER")
+            return True, filepath
+            
+        except Exception as e:
+            Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
+            return False, str(e)
