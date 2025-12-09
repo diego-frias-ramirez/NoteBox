@@ -14,6 +14,9 @@ class NoteBoxLogin(ctk.CTk):
     def __init__(self):
         super().__init__()
         
+        # Estado de visibilidad de contraseña
+        self.password_visible = False
+        
         # Configuración de ventana
         self.title("NoteBox - Login")
         self.geometry("420x580")
@@ -123,6 +126,20 @@ class NoteBoxLogin(ctk.CTk):
         )
         self.pass_entry.pack(fill="x", pady=(0, 10))
         
+        # Botón Mostrar/Ocultar contraseña (dentro del entry)
+        self.toggle_pwd_btn = ctk.CTkButton(
+            self.pass_entry,
+            text="👁️",
+            width=30,
+            height=30,
+            fg_color="transparent",
+            text_color="#6B7280",
+            hover_color="#E5E7EB",
+            font=ctk.CTkFont(size=16),
+            command=self.toggle_password_visibility
+        )
+        self.toggle_pwd_btn.place(relx=1.0, rely=0.5, anchor="e", x=-5)
+        
         # Checkbox Recordar
         self.remember_var = ctk.BooleanVar()
         remember_check = ctk.CTkCheckBox(
@@ -156,15 +173,17 @@ class NoteBoxLogin(ctk.CTk):
         separator = ctk.CTkFrame(main_frame, height=1, fg_color="#E5E7EB")
         separator.pack(fill="x", pady=(10, 15))
         
-        # Versión
         version = ctk.CTkLabel(
             main_frame, text="NoteBox v1.0 - 2025",
             font=ctk.CTkFont(size=11),
             text_color="#9CA3AF"
         )
         version.pack(pady=(5, 0))
+
+        # Vincular tecla Enter al login
+        self.bind("<Return>", self.login)
     
-    def login(self):
+    def login(self, event=None):
         user = self.user_entry.get()
         pwd = self.pass_entry.get()
         
@@ -191,6 +210,17 @@ class NoteBoxLogin(ctk.CTk):
     
     def forgot_password(self):
         self.show_message("Contacte al administrador", "info")
+
+    def toggle_password_visibility(self):
+        """Alterna la visibilidad de la contraseña."""
+        self.password_visible = not self.password_visible
+        
+        if self.password_visible:
+            self.pass_entry.configure(show="")
+            self.toggle_pwd_btn.configure(text="🚫") # Icono para ocultar
+        else:
+            self.pass_entry.configure(show="•")
+            self.toggle_pwd_btn.configure(text="👁️") # Icono para mostrar
     
     def show_message(self, msg, type="info"):
         colors = {
