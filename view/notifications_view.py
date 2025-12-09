@@ -413,7 +413,3 @@ class NotificationsView(BaseView):
             Logger.error(f"Error al contar notificaciones no leídas: {e}", "NOTIFICATIONS_VIEW")
             return 0
 
-if __name__ == "__main__":
-    example_user = {"id": 1, "nombre": "Admin", "rol": "Admin"}
-    app = NotificationsView(example_user)
-    app.run()
