@@ -29,14 +29,18 @@ class DashboardView(BaseView):
         self.report_model = ReportModel()
         self.alert_model = AlertModel()
         
-        self.load_data()
+        # NO cargar datos aquí - se hará después de crear la UI
         
         super().__init__(
             user_data=user_data,
             page_id="dashboard",
             page_title="Dashboard Principal",
-            page_subtitle="Bienvenido al sistema de gestión"
+            page_subtitle="Bienvenido al sistema de gestión",
+            defer_content_creation=True  # No crear contenido hasta que los datos estén listos
         )
+        
+        # Cargar datos de forma asíncrona DESPUÉS de crear la UI
+        self.after(100, self.start_async_data_load)
     
     def load_data(self):
         """Carga datos desde la base de datos."""
@@ -49,8 +53,71 @@ class DashboardView(BaseView):
         except Exception as e:
             Logger.error(f"Error cargando datos: {e}", "DASHBOARD")
     
+    def start_async_data_load(self):
+        """Inicia la carga asíncrona de datos."""
+        self.show_loading("Cargando dashboard...")
+        
+        # Ejecutar carga en background
+        self.run_background_task(
+            task_func=self._load_data_background,
+            callback_func=self._on_data_loaded,
+            error_callback=self._on_data_load_error
+        )
+    
+    def _load_data_background(self):
+        """Función que se ejecuta en background thread para cargar datos."""
+        try:
+            inventory_summary = self.report_model.get_inventory_summary() or {}
+            low_stock_products = self.report_model.get_low_stock_products() or []
+            active_alerts = self.alert_model.get_active_alerts() or []
+            category_data = self.report_model.get_products_by_category() or []
+            
+            return {
+                'inventory_summary': inventory_summary,
+                'low_stock_products': low_stock_products,
+                'active_alerts': active_alerts,
+                'category_data': category_data
+            }
+        except Exception as e:
+            Logger.error(f"Error cargando datos en background: {e}", "DASHBOARD")
+            raise
+    
+    def _on_data_loaded(self, data):
+        """Callback que se ejecuta cuando los datos están listos."""
+        self.inventory_summary = data['inventory_summary']
+        self.low_stock_products = data['low_stock_products']
+        self.active_alerts = data['active_alerts']
+        self.category_data = data['category_data']
+        
+        # Actualizar la UI con los nuevos datos (sin recrear todo)
+        self.update_content_with_data()
+        
+        # Ocultar loading
+        self.hide_loading()
+        Logger.info("Dashboard cargado exitosamente", "DASHBOARD")
+    
+    def _on_data_load_error(self, error):
+        """Callback que se ejecuta si hay error al cargar datos."""
+        Logger.error(f"Error al cargar dashboard: {error}", "DASHBOARD")
+        self.hide_loading()
+        # Mostrar mensaje de error al usuario
+        try:
+            from tkinter import messagebox
+            messagebox.showerror("Error", "No se pudieron cargar los datos del dashboard.")
+        except:
+            pass
+    
+    def update_content_with_data(self):
+        """Actualiza el contenido existente con los datos cargados."""
+        # Limpiar contenido actual
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        
+        # Recrear con datos reales
+        self.create_content()
+    
     def create_content(self):
-        """Crea el contenido principal del dashboard."""
+        """Crea el contenido principal del dashboard (solo llamado después de cargar datos)."""
         # Banner de bienvenida
         self.create_welcome_banner()
         

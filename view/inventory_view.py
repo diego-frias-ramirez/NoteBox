@@ -40,8 +40,12 @@ class InventoryView(BaseView):
             user_data=user_data,
             page_id="inventario",
             page_title="Gestión de Inventario",
-            page_subtitle="Administrar productos y categorías"
+            page_subtitle="Administrar productos y categorías",
+            defer_content_creation=True  # No crear contenido hasta que los datos estén listos
         )
+        
+        # Cargar datos de forma asíncrona DESPUÉS de crear la UI
+        self.after(100, self.start_async_data_load)
 
     def create_content(self):
         """Crea el contenido específico del módulo de inventario."""
@@ -63,8 +67,6 @@ class InventoryView(BaseView):
         # Paginación
         self.create_pagination(content_frame)
 
-        # Cargar datos iniciales
-        self.load_products()
 
     def create_toolbar(self, parent):
         """Crea la barra de herramientas (buscador, filtros, botones)."""
@@ -753,13 +755,22 @@ class InventoryView(BaseView):
             self.current_page = page_num
             self.load_products()
 
-    def load_products(self):
-        """Carga productos desde el controlador."""
+    def start_async_data_load(self):
+        """Inicia la carga asíncrona de datos."""
+        self.show_loading("Cargando inventario...")
+        
+        # Ejecutar carga en background
+        self.run_background_task(
+            task_func=self._load_products_background,
+            callback_func=self._on_products_loaded,
+            error_callback=self._on_products_load_error
+        )
+    
+    def _load_products_background(self):
+        """Función que se ejecuta en background thread para cargar productos."""
         try:
             # Obtener productos del controlador
-            # Si hay múltiples categorías, obtener productos de todas
             if self.filter_category_ids:
-                # Obtener productos de cada categoría y combinarlos
                 all_products = []
                 total = 0
                 for cat_id in self.filter_category_ids:
@@ -781,7 +792,6 @@ class InventoryView(BaseView):
                 
                 total = len(products)
             else:
-                # Sin filtro de categoría, obtener todos
                 products, total = self.controller.get_products(
                     page=self.current_page,
                     search=self.search_query,
@@ -795,29 +805,64 @@ class InventoryView(BaseView):
                 elif self.sort_order == "oldest":
                     products = sorted(products, key=lambda x: x.get('id', 0))
             
-            self.products = products
-            self.total_products = total
-
-            if not self.categories:
-                self.categories = self.controller.get_categories()
-
-            # Actualizar la barra de filtros para reflejar los cambios
-            self.create_filters_bar()
+            # Cargar categorías si no están cargadas
+            categories = self.categories if self.categories else self.controller.get_categories()
             
-            self.update_table()
-            self.update_pagination_label()
-            self.update_page_buttons()
-
-            Logger.info(f"Productos cargados: {len(products)} en página {self.current_page} de {total}", "INVENTORY_VIEW")
-            self.generate_stock_alerts(products)
-
+            return {
+                'products': products,
+                'total': total,
+                'categories': categories
+            }
         except Exception as e:
-            Logger.log_error_exception(e, "INVENTORY_VIEW")
-            alert_manager.show_error(
-                "Error al cargar productos", 
-                f"No se pudieron cargar los productos.\nError: {str(e)}",
-                parent=self
-            )
+            Logger.error(f"Error cargando productos en background: {e}", "INVENTORY_VIEW")
+            raise
+    
+    def _on_products_loaded(self, data):
+        """Callback que se ejecuta cuando los productos están listos."""
+        self.products = data['products']
+        self.total_products = data['total']
+        
+        if not self.categories:
+            self.categories = data['categories']
+
+        # Si es la primera carga, crear el contenido
+        if not hasattr(self, 'filters_container') or self.filters_container is None:
+            self.create_content()
+        
+        # Actualizar la barra de filtros para reflejar los cambios
+        self.create_filters_bar()
+        
+        self.update_table()
+        self.update_pagination_label()
+        self.update_page_buttons()
+
+        Logger.info(f"Productos cargados: {len(self.products)} en página {self.current_page} de {self.total_products}", "INVENTORY_VIEW")
+        self.generate_stock_alerts(self.products)
+        
+        # Ocultar loading
+        self.hide_loading()
+    
+    def _on_products_load_error(self, error):
+        """Callback que se ejecuta si hay error al cargar productos."""
+        Logger.error(f"Error al cargar inventario: {error}", "INVENTORY_VIEW")
+        self.hide_loading()
+        alert_manager.show_error(
+            "Error al cargar productos", 
+            f"No se pudieron cargar los productos.\nError: {str(error)}",
+            parent=self
+        )
+
+    def load_products(self):
+        """Carga productos desde el controlador (ahora con loading screen)."""
+        self.show_loading("Cargando productos...")
+        
+        # Ejecutar carga en background
+        self.run_background_task(
+            task_func=self._load_products_background,
+            callback_func=self._on_products_loaded,
+            error_callback=self._on_products_load_error
+        )
+
 
     def generate_stock_alerts(self, products):
         """Genera alertas automáticas para productos con stock bajo o agotado."""
