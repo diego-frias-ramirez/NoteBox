@@ -44,6 +44,12 @@ class Sidebar(ctk.CTkFrame):
             {"id": "ayuda", "label": "Ayuda", "icon": "help.png"},
         ]
 
+        # Filtrar menú según rol
+        user_role = self.user_data.get('rol', '').lower()
+        if user_role == 'empleado':
+            # Empleados no tienen acceso a Usuarios ni Configuración
+            self.menu_items = [item for item in self.menu_items if item["id"] not in ["usuarios", "configuracion"]]
+
         self.menu_buttons = {}
         self.icon_images = {}
         self.chat_ai_window = None  # Referencia a la ventana de chat

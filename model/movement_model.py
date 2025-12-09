@@ -38,9 +38,10 @@ class MovementModel:
         query = """
             INSERT INTO movimientos (
                 tipo, producto_id, cantidad, motivo, fecha, usuario_id, notas
-            ) VALUES (%s, %s, %s, %s, NOW(), %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        params = (movement_type, product_id, quantity, reason, user_id, notes)
+        current_time = datetime.datetime.now()
+        params = (movement_type, product_id, quantity, reason, current_time, user_id, notes)
         
         try:
             movement_id = self.db.execute_query(query, params=params)
@@ -163,6 +164,25 @@ class MovementModel:
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENT_MODEL")
             return []
+
+    def get_product_by_id(self, product_id):
+        """Obtiene un producto por su ID."""
+        query = """
+            SELECT 
+                id, codigo, nombre, descripcion, categoria_id,
+                stock, stock_minimo, precio, estado,
+                dias_sin_movimiento, fecha_creacion, fecha_actualizacion,
+                activo,
+                (SELECT nombre FROM categorias WHERE id = productos.categoria_id) AS categoria_nombre
+            FROM productos
+            WHERE id = %s
+        """
+        try:
+            result = self.db.execute_query(query, params=(product_id,), fetch=True)
+            return result[0] if result else None
+        except Exception as e:
+            Logger.log_error_exception(e, "MOVEMENT_MODEL")
+            return None
 
     def get_total_movements(self):
         """

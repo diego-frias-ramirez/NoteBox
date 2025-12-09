@@ -879,6 +879,7 @@ class MovementsView(BaseView):
             )
             
             # Actualizar UI
+            self.current_page = 1  # Resetear a la primera página para ver el nuevo movimiento
             self.load_movements()
             self.daily_summary = self.controller.get_daily_summary()
             self.update_daily_summary()
