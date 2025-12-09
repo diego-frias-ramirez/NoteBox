@@ -349,8 +349,11 @@ class BaseView(ctk.CTk):
             print(f"Error al limpiar notificaciones: {e}")
     
     def get_notification_count(self):
-        """Obtiene el número de notificaciones (sobreescribir en subclases)."""
-        return 0
+        """Obtiene el número de notificaciones usando el alert_manager."""
+        try:
+            return alert_manager.get_unread_count()
+        except Exception:
+            return 0
 
     def check_alert_queue(self):
         """Revisa la cola de alertas y muestra toasts."""
@@ -365,6 +368,14 @@ class BaseView(ctk.CTk):
                     )
                 except queue.Empty:
                     break
+        except Exception:
+            pass
+            
+        # Actualizar badge de notificaciones si ha cambiado
+        try:
+            current_count = alert_manager.get_unread_count()
+            if hasattr(self, 'header') and self.header.notification_count != current_count:
+                self.header.update_notifications(current_count)
         except Exception:
             pass
         

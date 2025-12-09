@@ -131,22 +131,14 @@ class Header(ctk.CTkFrame):
         )
         notif_btn.place(x=0, y=2)
         
-        # Badge de notificaciones
+        # Badge de notificaciones (Punto rojo sin número)
         if self.notification_count > 0:
             badge = ctk.CTkFrame(
-                notif_container, width=18, height=18,
+                notif_container, width=12, height=12,
                 fg_color=self.colors["notification_badge"],
-                corner_radius=9
+                corner_radius=6
             )
-            badge.place(x=25, y=0)
-            badge.pack_propagate(False)
-            
-            badge_text = ctk.CTkLabel(
-                badge, text=str(min(self.notification_count, 9)) + ("+" if self.notification_count > 9 else ""),
-                font=ctk.CTkFont(size=10, weight="bold"),
-                text_color="white"
-            )
-            badge_text.place(relx=0.5, rely=0.5, anchor="center")
+            badge.place(x=28, y=2) # Ajustado para esquina superior derecha del ícono
     
     def update_title(self, title, subtitle=""):
         """Actualiza el título del header."""
