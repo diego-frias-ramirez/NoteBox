@@ -6,6 +6,7 @@ Sistema de alertas y notificaciones
 from tkinter import messagebox
 import customtkinter as ctk
 import json
+import queue
 from assets.styles.colors import Colors
 from model.alert_model import AlertModel
 from utils.logger import Logger
@@ -21,6 +22,7 @@ class AlertManager:
 
     def __init__(self):
         self.alert_model = AlertModel()
+        self.ui_queue = queue.Queue() # Cola para notificaciones en tiempo real
 
     def _create_custom_dialog(self, parent, title, message, dialog_type="info", buttons=None):
         """
@@ -358,6 +360,14 @@ class AlertManager:
             if not self.alert_model.check_existing_alert(tipo_alerta, product['id'], hours=24):
                 # Crear alerta en la base de datos usando el modelo
                 alert_id = self.alert_model.create_alert(tipo=tipo_alerta, producto_id=product['id'], descripcion=descripcion)
+                
+                # Enviar a la UI
+                self.ui_queue.put({
+                    "title": tipo_alerta,
+                    "message": descripcion,
+                    "icon": "error" if tipo_alerta == "Producto agotado" else "warning"
+                })
+                
                 return alert_id
             else:
                 # Ya existe una alerta similar reciente, no crear duplicado
@@ -383,6 +393,14 @@ class AlertManager:
             if not self.alert_model.check_existing_alert(tipo_alerta, product['id'], hours=48):
                 # Crear alerta en la base de datos usando el modelo
                 alert_id = self.alert_model.create_alert(tipo=tipo_alerta, producto_id=product['id'], descripcion=descripcion)
+                
+                # Enviar a la UI
+                self.ui_queue.put({
+                    "title": tipo_alerta,
+                    "message": descripcion,
+                    "icon": "warning"
+                })
+                
                 return alert_id
 
         return None
@@ -417,6 +435,13 @@ class AlertManager:
             producto_id=product['id'],
             descripcion=descripcion
         )
+        
+        # Enviar a la UI
+        self.ui_queue.put({
+            "title": tipo_alerta,
+            "message": descripcion,
+            "icon": "info"
+        })
         
         return alert_id
 

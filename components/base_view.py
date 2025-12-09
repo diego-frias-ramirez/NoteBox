@@ -9,6 +9,9 @@ para tener automáticamente el sidebar y header.
 import customtkinter as ctk
 from components.sidebar import Sidebar
 from components.header import Header
+from components.toast import ToastManager
+from utils.alerts import alert_manager
+import queue
 import os
 
 class BaseView(ctk.CTk):
@@ -39,6 +42,11 @@ class BaseView(ctk.CTk):
      self.after(10, lambda: self.state('zoomed'))  # Tercera llamada
      self.after(50, lambda: self.state('zoomed'))  # Cuarta llamada
      self.after(150, lambda: self.state('zoomed'))  # Quinta llamada
+
+     # Inicializar Toast Manager
+     self.toast_manager = ToastManager(self)
+     # Iniciar chequeo de alertas
+     self.after(1000, self.check_alert_queue)
     # =====================================================
         
     
@@ -192,6 +200,20 @@ class BaseView(ctk.CTk):
             width=120
         )
         clean_btn.pack(side="right", padx=20, pady=12)
+        
+        # Botón Refrescar
+        refresh_btn = ctk.CTkButton(
+            header_frame,
+            text="🔄",
+            width=40,
+            command=lambda: [popup.destroy(), self.show_notifications()],
+            fg_color="#3B82F6",
+            hover_color="#2563EB",
+            text_color="white",
+            height=35,
+            corner_radius=8
+        )
+        refresh_btn.pack(side="right", padx=(0, 10), pady=12)
 
         
         # Contenedor de notificaciones
@@ -329,6 +351,26 @@ class BaseView(ctk.CTk):
     def get_notification_count(self):
         """Obtiene el número de notificaciones (sobreescribir en subclases)."""
         return 0
+
+    def check_alert_queue(self):
+        """Revisa la cola de alertas y muestra toasts."""
+        try:
+            while not alert_manager.ui_queue.empty():
+                try:
+                    alert = alert_manager.ui_queue.get_nowait()
+                    self.toast_manager.show_toast(
+                        title=alert.get("title", "Notificación"),
+                        message=alert.get("message", ""),
+                        icon=alert.get("icon", "info")
+                    )
+                except queue.Empty:
+                    break
+        except Exception:
+            pass
+        
+        # Reprogramar si la ventana sigue viva
+        if self.winfo_exists():
+            self.after(1000, self.check_alert_queue)
     
     def run(self):
         self.mainloop()
