@@ -326,7 +326,7 @@ class InventoryController:
             Logger.log_error_exception(e, "INVENTORY_CONTROLLER")
             return []
 
-    def export_inventory(self, format="csv", category_id=None, search_query=""):
+    def export_inventory(self, format="csv", category_id=None, search_query="", filename=None, filepath=None):
         """
         Exporta el inventario a un archivo.
         
@@ -334,6 +334,8 @@ class InventoryController:
             format (str): Formato de exportación ('csv', 'pdf', 'excel').
             category_id (int): Filtrar por categoría (opcional).
             search_query (str): Filtrar por búsqueda (opcional).
+            filename (str): Nombre del archivo (opcional).
+            filepath (str): Ruta absoluta completa para guardar el archivo (opcional).
         
         Returns:
             tuple: (bool: éxito, str: ruta del archivo o mensaje de error).
@@ -371,20 +373,26 @@ class InventoryController:
             import pandas as pd
             df = pd.DataFrame(formatted_data)
             
-            from utils.helpers import Helpers
-            filename = Helpers.generate_export_filename("inventario", format)
-            export_dir = Helpers.get_exports_dir("reports")
-            filepath = os.path.join(export_dir, filename)
+            if filepath:
+                # Si se proporciona ruta completa, usarla
+                final_filepath = filepath
+            else:
+                # Lógica por defecto
+                from utils.helpers import Helpers
+                if not filename:
+                    filename = Helpers.generate_export_filename("inventario", format)
+                export_dir = Helpers.get_exports_dir("reports")
+                final_filepath = os.path.join(export_dir, filename)
             
             if format.lower() == "csv":
-                df.to_csv(filepath, index=False, encoding='utf-8-sig')
+                df.to_csv(final_filepath, index=False, encoding='utf-8-sig')
             elif format.lower() == "excel":
-                df.to_excel(filepath, index=False, engine='openpyxl')
+                df.to_excel(final_filepath, index=False, engine='openpyxl')
             elif format.lower() == "pdf":
                 # Para PDF, puedes usar reportlab o convertir desde Excel/Csv
                 # Por simplicidad, generamos un CSV y luego lo convertimos si es necesario
                 # o usamos una librería como fpdf2
-                temp_csv = filepath.replace(".pdf", ".csv")
+                temp_csv = final_filepath.replace(".pdf", ".csv")
                 df.to_csv(temp_csv, index=False, encoding='utf-8-sig')
                 # Lógica para convertir CSV a PDF (requiere más código)
                 # Por ahora, devolvemos el CSV
@@ -392,8 +400,8 @@ class InventoryController:
             else:
                 return False, f"Formato de exportación '{format}' no soportado"
             
-            Logger.success(f"Inventario exportado a: {filepath}", "INVENTORY_CONTROLLER")
-            return True, filepath
+            Logger.success(f"Inventario exportado a: {final_filepath}", "INVENTORY_CONTROLLER")
+            return True, final_filepath
             
         except Exception as e:
             Logger.log_error_exception(e, "INVENTORY_CONTROLLER")

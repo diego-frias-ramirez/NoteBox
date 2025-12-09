@@ -6,12 +6,13 @@ Módulo de conexión a la base de datos MySQL usando PyMySQL
 import pymysql
 import json
 import os
+import threading
 from utils.logger import Logger
 
 class Database:
     """Clase para gestionar la conexión a la base de datos MySQL."""
 
-    _connection = None
+    _local_storage = threading.local()
     _config = None
 
     @classmethod
@@ -49,13 +50,14 @@ class Database:
 
     @classmethod
     def get_connection(cls):
-        """Obtiene o crea una conexión a la base de datos."""
+        """Obtiene o crea una conexión a la base de datos (Thread-Safe)."""
         try:
             config = cls.load_config()
             
-            # Verificar si la conexión existe y está abierta
-            if cls._connection is None or not cls._connection.open:
-                cls._connection = pymysql.connect(
+            # Verificar si existe una conexión para este hilo
+            if not hasattr(cls._local_storage, 'connection') or cls._local_storage.connection is None or not cls._local_storage.connection.open:
+                # Crear nueva conexión para este hilo
+                cls._local_storage.connection = pymysql.connect(
                     host=config['database']['host'],
                     user=config['database']['user'],
                     password=config['database']['password'],
@@ -70,11 +72,11 @@ class Database:
             else:
                  # Si ya existe, verificar que esté viva
                  try:
-                     cls._connection.ping(reconnect=True)
+                     cls._local_storage.connection.ping(reconnect=True)
                  except pymysql.Error:
                      # Si falla el ping, intentar reconectar
                      Logger.warning("Conexión perdida, reconectando...", "DATABASE")
-                     cls._connection = pymysql.connect(
+                     cls._local_storage.connection = pymysql.connect(
                         host=config['database']['host'],
                         user=config['database']['user'],
                         password=config['database']['password'],
@@ -86,7 +88,7 @@ class Database:
                         connect_timeout=config['database'].get('connect_timeout', 10)
                      )
             
-            return cls._connection
+            return cls._local_storage.connection
             
         except pymysql.Error as e:
             error_msg = f"Error al conectar a la base de datos: {e}"
@@ -95,10 +97,10 @@ class Database:
 
     @classmethod
     def close_connection(cls):
-        """Cierra la conexión a la base de datos."""
-        if cls._connection and cls._connection.open:
-            cls._connection.close()
-            cls._connection = None
+        """Cierra la conexión a la base de datos del hilo actual."""
+        if hasattr(cls._local_storage, 'connection') and cls._local_storage.connection and cls._local_storage.connection.open:
+            cls._local_storage.connection.close()
+            cls._local_storage.connection = None
             Logger.info("Conexión a base de datos cerrada", "DATABASE")
 
     @classmethod

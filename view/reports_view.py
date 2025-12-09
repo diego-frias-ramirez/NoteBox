@@ -906,20 +906,48 @@ class ReportsView(BaseView):
                 except ValueError:
                     self.show_message("Formato de fecha fin incorrecto\nUse: DD/MM/YYYY", "error")
                     return
+
+            # Configurar nombre por defecto
+            gen_date = datetime.now()
+            gen_date_str = gen_date.strftime("%d-%m-%Y")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
-            success, filepath = self.controller.export_report(
+            # Prepare range strings (for filename)
+            start_fname = start_date.strftime("%d-%m-%Y") if start_date else "ALL"
+            end_fname = end_date.strftime("%d-%m-%Y") if end_date else "ALL"
+            range_fname = f"{start_fname}_to_{end_fname}"
+
+            ext = f".{format_type.lower()}"
+            if format_type.lower() == "excel": ext = ".xlsx"
+            
+            default_filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}{ext}"
+
+            # Ask where to save
+            filepath = ctk.filedialog.asksaveasfilename(
+                title=f"Guardar Reporte ({format_type.upper()})",
+                initialdir=Helpers.get_exports_dir('reports'),
+                initialfile=default_filename,
+                defaultextension=ext,
+                filetypes=[(f"{format_type.upper()} file", f"*{ext}"), ("All files", "*.*")]
+            )
+
+            if not filepath:
+                return  # Cancelado por el usuario
+            
+            success, result_path = self.controller.export_report(
                 format_type=format_type,
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
+                filepath=filepath
             )
             
             if success:
-                Logger.success(f"Reporte exportado: {filepath}", "REPORTS_VIEW")
-                filename = os.path.basename(filepath)
+                Logger.success(f"Reporte exportado: {result_path}", "REPORTS_VIEW")
+                filename = os.path.basename(result_path)
                 self.show_message(f"✅ Reporte exportado\n\n{filename}", "success")
             else:
-                Logger.error(f"Error al exportar: {filepath}", "REPORTS_VIEW")
-                self.show_message(f"❌ Error:\n{filepath}", "error")
+                Logger.error(f"Error al exportar: {result_path}", "REPORTS_VIEW")
+                self.show_message(f"❌ Error:\n{result_path}", "error")
                 
         except Exception as e:
             Logger.error(f"Error en exportación: {e}", "REPORTS_VIEW")

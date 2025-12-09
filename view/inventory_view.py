@@ -891,24 +891,41 @@ class InventoryView(BaseView):
             return
         
         # Verificar si el controlador acepta el parámetro filename
+        # Verificar si el controlador acepta el parámetro filename
         try:
-            # Generar nombre de archivo con fecha
+            # Generar nombre de archivo base
             current_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            filename = f"inventario_{current_date}.csv"
+            default_filename = f"inventario_{current_date}.csv"
+            
+            # Obtener directorio por defecto
+            from utils.helpers import Helpers
+            default_dir = Helpers.get_exports_dir("reports")
+            
+            # Pedir al usuario dónde guardar (con valor por defecto)
+            filepath = ctk.filedialog.asksaveasfilename(
+                title="Guardar Inventario",
+                initialdir=default_dir,
+                initialfile=default_filename,
+                defaultextension=".csv",
+                filetypes=[("Archivos CSV", "*.csv"), ("Todos los archivos", "*.*")]
+            )
+            
+            if not filepath:
+                return # Usuario canceló selección
             
             # Si hay múltiples categorías, exportar con category_id None pero filtrado
             category_id_export = self.filter_category_ids[0] if len(self.filter_category_ids) == 1 else None
             
-            # Intentar con el parámetro filename
+            # Intentar con el parámetro filepath
             success, message = self.controller.export_inventory(
                 format="csv", 
                 category_id=category_id_export, 
                 search_query=self.search_query,
-                filename=filename
+                filepath=filepath
             )
         except TypeError:
-            # Si el controlador no acepta filename, usar el método original
-            Logger.info("Controlador no acepta filename, usando método estándar", "INVENTORY_VIEW")
+            # Si el controlador no acepta filepath, usar el método original
+            Logger.info("Controlador no acepta filepath, usando método estándar", "INVENTORY_VIEW")
             category_id_export = self.filter_category_ids[0] if len(self.filter_category_ids) == 1 else None
             success, message = self.controller.export_inventory(
                 format="csv", 
@@ -1040,6 +1057,14 @@ class InventoryView(BaseView):
                 alert_manager.validation_error(
                     "Por favor complete los siguientes campos obligatorios:\n\n" + 
                     "\n".join([f"• {field}" for field in missing_fields]),
+                    self
+                )
+                return
+
+            import re
+            if not re.search(r'[a-zA-Z]', name):
+                alert_manager.validation_error(
+                    "El nombre del producto debe contener al menos una letra.",
                     self
                 )
                 return
@@ -1220,6 +1245,14 @@ class InventoryView(BaseView):
                 alert_manager.validation_error(
                     "Por favor complete los siguientes campos obligatorios:\n\n" + 
                     "\n".join([f"• {field}" for field in missing_fields]),
+                    self
+                )
+                return
+
+            import re
+            if not re.search(r'[a-zA-Z]', name):
+                alert_manager.validation_error(
+                    "El nombre del producto debe contener al menos una letra.",
                     self
                 )
                 return

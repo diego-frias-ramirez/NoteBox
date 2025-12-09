@@ -770,7 +770,26 @@ class SettingsView(BaseView):
     def create_backup_now(self):
         """Crea un backup manual."""
         try:
-            success, result = self.controller.create_backup()
+            # Default filename: backup_notebox_YYYYMMDD_HHMMSS.sql
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_filename = f"backup_notebox_{timestamp}.sql"
+            
+            # Initial dir: configured backup dir or exports/backups
+            initial_dir = Helpers.get_exports_dir('backups')
+            
+            # Ask where to save
+            filepath = filedialog.asksaveasfilename(
+                title="Guardar Backup",
+                initialdir=initial_dir,
+                initialfile=default_filename,
+                defaultextension=".sql",
+                filetypes=[("SQL Database Dump", "*.sql"), ("All files", "*.*")]
+            )
+
+            if not filepath:
+                return  # Usuario canceló
+            
+            success, result = self.controller.create_backup(filepath=filepath)
             
             if success:
                 filename = os.path.basename(result)

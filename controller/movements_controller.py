@@ -156,59 +156,64 @@ class MovementsController:
             Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")
             return []
 
-    def export_movements(self, movements_data):
+    def export_movements(self, movements_data, filepath=None):
         """
         Exporta los movimientos a un archivo CSV.
         
         Args:
             movements_data (list): Lista de diccionarios con datos de movimientos.
+            filepath (str): Ruta completa para guardar el archivo (opcional).
             
         Returns:
-            tuple: (success, message_or_path)
+            tuple: (bool, str) - (Éxito, Ruta del archivo o mensaje de error)
         """
-        import csv
-        
         try:
-            # Crear directorio de exports si no existe
-            export_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'exports')
-            if not os.path.exists(export_dir):
-                os.makedirs(export_dir)
+            if not movements_data:
+                return False, "No hay datos para exportar"
                 
-            # Generar nombre de archivo único
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"movimientos_{timestamp}.csv"
-            filepath = os.path.join(export_dir, filename)
+            import pandas as pd
+            import os
+            from datetime import datetime
             
-            # Definir encabezados
-            headers = ["ID", "Tipo", "Producto", "Cantidad", "Motivo", "Fecha", "Usuario", "Notas"]
+            # Convertir a DataFrame
+            df = pd.DataFrame(movements_data)
             
-            with open(filepath, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerow(headers)
+            # Seleccionar y renombrar columnas para una mejor exportación
+            # Asegurarse de que las columnas existen antes de renombrar
+            columns_map = {
+                'id': 'ID',
+                'tipo': 'Tipo',
+                'producto_nombre': 'Producto',
+                'cantidad': 'Cantidad',
+                'motivo': 'Motivo',
+                'fecha': 'Fecha',
+                'usuario_nombre': 'Usuario',
+                'notas': 'Notas'
+            }
+            
+            # Filtrar columnas que existen en el DataFrame
+            existing_cols = [c for c in columns_map.keys() if c in df.columns]
+            df = df[existing_cols]
+            df = df.rename(columns=columns_map)
+            
+            if filepath:
+                # Si se proporciona ruta completa, usarla
+                final_filepath = filepath
+            else:
+                # Definir ruta de exportación por defecto
+                from utils.helpers import Helpers
+                export_dir = Helpers.get_exports_dir("reports")
                 
-                for m in movements_data:
-                    # Formatear fecha
-                    fecha_str = ""
-                    if m.get("fecha"):
-                        if isinstance(m.get("fecha"), str):
-                             fecha_str = m.get("fecha")
-                        else:
-                             fecha_str = m.get("fecha").strftime("%Y-%m-%d %H:%M:%S")
-                    
-                    row = [
-                        m.get("id"),
-                        m.get("tipo"),
-                        m.get("producto_nombre"),
-                        m.get("cantidad"),
-                        m.get("motivo"),
-                        fecha_str,
-                        m.get("usuario_nombre"),
-                        m.get("notas", "")
-                    ]
-                    writer.writerow(row)
-                    
-            Logger.success(f"Movimientos exportados a {filepath}", "MOVEMENTS_CONTROLLER")
-            return True, filepath
+                # Generar nombre de archivo
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"movimientos_{timestamp}.csv"
+                final_filepath = os.path.join(export_dir, filename)
+            
+            # Guardar a CSV
+            df.to_csv(final_filepath, index=False, encoding='utf-8-sig')
+            
+            Logger.success(f"Movimientos exportados a: {final_filepath}", "MOVEMENTS_CONTROLLER")
+            return True, final_filepath
             
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_CONTROLLER")

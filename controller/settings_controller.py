@@ -254,7 +254,7 @@ class SettingsController:
             Logger.error(f"Error actualizando colores UI: {e}", "SETTINGS_CONTROLLER")
             return False, str(e)
 
-    def create_backup(self):
+    def create_backup(self, filepath=None):
         """Crea un backup manual de la base de datos."""
         try:
             import subprocess
@@ -275,19 +275,25 @@ class SettingsController:
             password = db_info.get('password', '')
             database = db_info.get('database', 'notebox_db')
 
-            # Carpeta de backups (intentar usar paths de config si existen)
-            backups_path_cfg = env.get('paths', {}).get('backups') or db_config.get('development', {}).get('paths', {}).get('backups')
-            if backups_path_cfg:
-                # Resolver ruta relativa respecto al directorio de trabajo actual
-                backups_dir = os.path.normpath(os.path.join(os.getcwd(), backups_path_cfg))
+            if filepath:
+                backup_file = filepath
+                # Ensure dir exists
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                backups_dir = os.path.dirname(filepath) # Used for retention cleanup later
             else:
-                backups_dir = os.path.join(os.getcwd(), 'exports', 'backups')
+                # Carpeta de backups (intentar usar paths de config si existen)
+                backups_path_cfg = env.get('paths', {}).get('backups') or db_config.get('development', {}).get('paths', {}).get('backups')
+                if backups_path_cfg:
+                    # Resolver ruta relativa respecto al directorio de trabajo actual
+                    backups_dir = os.path.normpath(os.path.join(os.getcwd(), backups_path_cfg))
+                else:
+                    backups_dir = os.path.join(os.getcwd(), 'exports', 'backups')
 
-            os.makedirs(backups_dir, exist_ok=True)
+                os.makedirs(backups_dir, exist_ok=True)
 
-            # Nombre del archivo de backup
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_file = os.path.join(backups_dir, f"backup_notebox_{timestamp}.sql")
+                # Nombre del archivo de backup
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_file = os.path.join(backups_dir, f"backup_notebox_{timestamp}.sql")
 
             # Verificar que mysqldump esté disponible
             mysqldump_path = shutil.which('mysqldump')

@@ -653,35 +653,44 @@ class MovementsView(BaseView):
             )
 
     def export_all_movements(self, movements_data):
-        """Exporta todos los movimientos a un archivo."""
+        """Exporta los movimientos mostrados."""
         try:
-            if not movements_data:
-                alert_manager.show_warning("Sin datos", "No hay movimientos para exportar.", self)
-                return
-                
-            # Usar el controlador para exportar
-            success, message = self.controller.export_movements(movements_data)
+            # Configurar nombre por defecto
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_filename = f"movimientos_{timestamp}.csv"
+            
+            # Initial dir
+            initial_dir = Helpers.get_exports_dir('reports')
+            
+            # Ask where to save
+            filepath = ctk.filedialog.asksaveasfilename(
+                title="Exportar Movimientos",
+                initialdir=initial_dir,
+                initialfile=default_filename,
+                defaultextension=".csv",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+            )
+
+            if not filepath:
+                return  # Cancelado
+            
+            success, result = self.controller.export_movements(movements_data, filepath)
             
             if success:
                 alert_manager.show_success(
                     "Exportación Exitosa", 
-                    f"Los movimientos se exportaron correctamente.\n\nUbicación: {message}",
+                    f"Movimientos exportados a:\n{os.path.basename(result)}",
                     self
                 )
             else:
                 alert_manager.show_error(
                     "Error al Exportar", 
-                    f"No se pudo exportar los movimientos.\n\nError: {message}",
+                    f"No se pudo exportar:\n{result}",
                     self
                 )
-                
         except Exception as e:
             Logger.log_error_exception(e, "MOVEMENTS_VIEW")
-            alert_manager.show_error(
-                "Error al Exportar", 
-                f"Error inesperado al exportar.\n\n{str(e)}",
-                self
-            )
+            alert_manager.show_error("Error", f"Error inesperado: {str(e)}", self)
 
     def create_movement_row(self, parent, movement):
         """Crea una fila para un movimiento en la tabla."""

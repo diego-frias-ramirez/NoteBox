@@ -243,12 +243,22 @@ class Sidebar(ctk.CTkFrame):
         return btn_frame
 
     def on_hover(self, frame, item, entering):
-        if item["id"] != self.active_page:
-            frame.configure(fg_color=self.colors["hover"] if entering else "transparent")
+        try:
+            if not self.winfo_exists():
+                return
+            if item["id"] != self.active_page:
+                frame.configure(fg_color=self.colors["hover"] if entering else "transparent")
+        except Exception:
+            pass
 
     def navigate(self, page_id):
-        if page_id != self.active_page:
-            self.on_navigate(page_id)
+        try:
+            if not self.winfo_exists():
+                return
+            if page_id != self.active_page:
+                self.on_navigate(page_id)
+        except Exception:
+            pass
 
     def create_user_footer(self):
         sep = ctk.CTkFrame(self, fg_color=self.colors["border"], height=1)

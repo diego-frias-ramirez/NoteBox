@@ -277,7 +277,7 @@ class ReportsController:
             Logger.error(f"Error obteniendo distribución por categoría: {e}", "REPORTS_CONTROLLER")
             return ([100], ['Error: 100%'])
 
-    def export_report(self, format_type="pdf", start_date=None, end_date=None):
+    def export_report(self, format_type="pdf", start_date=None, end_date=None, filepath=None):
         """Exporta el reporte en el formato especificado."""
         try:
             import pandas as pd
@@ -320,11 +320,7 @@ class ReportsController:
             gen_date = datetime.now()
             gen_date_str = gen_date.strftime("%d-%m-%Y")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            exports_dir = "exports/reports"
             
-            if not os.path.exists(exports_dir):
-                os.makedirs(exports_dir, exist_ok=True)
-
             # Prepare range strings (for filename and content)
             start_fname = start_date.strftime("%d-%m-%Y") if start_date else "ALL"
             end_fname = end_date.strftime("%d-%m-%Y") if end_date else "ALL"
@@ -333,6 +329,20 @@ class ReportsController:
             start_content = start_date.strftime("%d/%m/%Y") if start_date else "—"
             end_content = end_date.strftime("%d/%m/%Y") if end_date else "—"
 
+            if filepath:
+                # Si se proporciona ruta completa, usarla
+                final_filepath = filepath
+            else:
+                exports_dir = "exports/reports"
+                if not os.path.exists(exports_dir):
+                    os.makedirs(exports_dir, exist_ok=True)
+                
+                ext = f".{format_type.lower()}"
+                if format_type.lower() == "excel": ext = ".xlsx"
+                
+                filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}{ext}"
+                final_filepath = os.path.join(exports_dir, filename)
+
             if format_type.lower() == "pdf":
                 # Generar PDF a partir del DataFrame usando matplotlib (tabla)
                 try:
@@ -340,8 +350,8 @@ class ReportsController:
                     matplotlib.use('Agg')
                     import matplotlib.pyplot as plt
 
-                    filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.pdf"
-                    filepath = os.path.join(exports_dir, filename)
+                    # Usar final_filepath
+                    filepath = final_filepath
 
                     # Crear figura tamaño A4 aproximado (8.27 x 11.69 inches)
                     fig, ax = plt.subplots(figsize=(8.27, 11.69))
@@ -389,13 +399,12 @@ class ReportsController:
                 except Exception as pdf_e:
                     Logger.error(f"Error generando PDF: {pdf_e}", "REPORTS_CONTROLLER")
                     # Fallback a CSV
-                    filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.csv"
-                    filepath = os.path.join(exports_dir, filename)
+                    # Usar extensión csv sobre el mismo nombre base si es posible, o generar uno nuevo
+                    filepath = final_filepath.replace(".pdf", ".csv")
                     df.to_csv(filepath, index=False, encoding='utf-8-sig')
                     return True, filepath
             elif format_type.lower() == "excel":
-                filename = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.xlsx"
-                filepath = os.path.join(exports_dir, filename)
+                filepath = final_filepath
                 try:
                     # Escribir Excel con cabecera que incluya la fecha de generación
                     with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
@@ -416,8 +425,7 @@ class ReportsController:
                 except Exception as ex_e:
                     # Fallback a CSV si no se puede escribir xlsx
                     Logger.error(f"Error escribiendo Excel (fallback CSV): {ex_e}", "REPORTS_CONTROLLER")
-                    csv_name = f"reporte_inventario_{gen_date_str}_{range_fname}_{timestamp}.csv"
-                    csv_path = os.path.join(exports_dir, csv_name)
+                    csv_path = final_filepath.replace(".xlsx", ".csv")
                     # Prepend metadata lines (generation date + range) then the dataframe
                     try:
                         with open(csv_path, 'w', encoding='utf-8-sig', newline='') as f:
