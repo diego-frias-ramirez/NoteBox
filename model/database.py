@@ -67,6 +67,24 @@ class Database:
                     connect_timeout=config['database'].get('connect_timeout', 10)
                 )
                 Logger.success("Conexión a base de datos establecida", "DATABASE")
+            else:
+                 # Si ya existe, verificar que esté viva
+                 try:
+                     cls._connection.ping(reconnect=True)
+                 except pymysql.Error:
+                     # Si falla el ping, intentar reconectar
+                     Logger.warning("Conexión perdida, reconectando...", "DATABASE")
+                     cls._connection = pymysql.connect(
+                        host=config['database']['host'],
+                        user=config['database']['user'],
+                        password=config['database']['password'],
+                        database=config['database']['database'],
+                        port=config['database']['port'],
+                        charset=config['database'].get('charset', 'utf8mb4'),
+                        autocommit=config['database'].get('autocommit', True),
+                        cursorclass=pymysql.cursors.DictCursor,
+                        connect_timeout=config['database'].get('connect_timeout', 10)
+                     )
             
             return cls._connection
             

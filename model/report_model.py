@@ -113,5 +113,27 @@ class ReportModel:
         except Exception as e:
             Logger.log_error_exception(e, "REPORT_MODEL")
             return []
+
+    @staticmethod
+    def get_inactive_products(days=30):
+        """Obtiene productos sin movimiento en los últimos X días"""
+        query = f"""
+            SELECT 
+                p.id, p.codigo, p.nombre, p.stock, p.precio,
+                MAX(m.fecha) as ultimo_movimiento
+            FROM productos p
+            LEFT JOIN movimientos m ON p.id = m.producto_id
+            WHERE p.activo = TRUE
+            GROUP BY p.id
+            HAVING (MAX(m.fecha) < DATE_SUB(NOW(), INTERVAL {days} DAY)) OR (MAX(m.fecha) IS NULL)
+            ORDER BY ultimo_movimiento ASC
+        """
+        try:
+            result = Database.execute_query(query, fetch=True)
+            Logger.log_database_operation("SELECT", "productos_inactivos", True, f"{len(result) if result else 0} productos")
+            return result if result else []
+        except Exception as e:
+            Logger.log_error_exception(e, "REPORT_MODEL")
+            return []
         
     

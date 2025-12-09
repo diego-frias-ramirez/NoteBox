@@ -294,47 +294,60 @@ class SettingsController:
             if not mysqldump_path:
                 # Intentar fallback: exportar usando conexión Python (sin mysqldump)
                 try:
+                    # Asegurar conexión fresca
                     conn = Database.get_connection()
+                    
                     with conn.cursor() as cursor:
                         cursor.execute("SHOW TABLES")
-                        tables = [list(r.values())[0] for r in cursor.fetchall()]
-
+                        rows = cursor.fetchall()
+                        tables = []
+                        for r in rows:
+                             if r and list(r.values()):
+                                 tables.append(list(r.values())[0])
+                        
+                        if not tables:
+                             Logger.warning("Backup fallback: No se encontraron tablas", "SETTINGS_CONTROLLER")
+                             
                         with open(backup_file, 'w', encoding='utf-8') as f:
                             for table in tables:
-                                cursor.execute(f"SHOW CREATE TABLE `{table}`")
-                                create_row = cursor.fetchone()
-                                # obtener la columna CREATE TABLE (nombre puede variar)
-                                create_stmt = None
-                                for v in create_row.values():
-                                    if isinstance(v, str) and v.strip().upper().startswith('CREATE'):
-                                        create_stmt = v
-                                        break
-                                if not create_stmt:
-                                    # fallback: saltar table si no se obtiene create
+                                try:
+                                    cursor.execute(f"SHOW CREATE TABLE `{table}`")
+                                    create_row = cursor.fetchone()
+                                    if not create_row: continue
+                                    
+                                    # obtener la columna CREATE TABLE
+                                    create_stmt = None
+                                    for v in create_row.values():
+                                        if isinstance(v, str) and v.strip().upper().startswith('CREATE'):
+                                            create_stmt = v
+                                            break
+                                    if not create_stmt: continue
+
+                                    f.write(f"-- Table: {table}\n")
+                                    f.write(f"DROP TABLE IF EXISTS `{table}`;\n")
+                                    f.write(create_stmt + ";\n\n")
+
+                                    cursor.execute(f"SELECT * FROM `{table}`")
+                                    rows = cursor.fetchall()
+                                    if rows:
+                                        cols = list(rows[0].keys())
+                                        for r in rows:
+                                            vals = []
+                                            for c in cols:
+                                                v = r.get(c)
+                                                if v is None:
+                                                    vals.append('NULL')
+                                                elif isinstance(v, (int, float)):
+                                                    vals.append(str(v))
+                                                else:
+                                                    escaped = str(v).replace("'", "''").replace("\\", "\\\\").replace("\n", "\\n")
+                                                    vals.append(f"'{escaped}'")
+                                            cols_escaped = ', '.join([f'`{c}`' for c in cols])
+                                            f.write(f"INSERT INTO `{table}` ({cols_escaped}) VALUES ({', '.join(vals)});\n")
+                                    f.write('\n')
+                                except Exception as e:
+                                    Logger.error(f"Error backup tabla {table}: {e}", "SETTINGS_CONTROLLER")
                                     continue
-
-                                f.write(f"-- Table: {table}\n")
-                                f.write(f"DROP TABLE IF EXISTS `{table}`;\n")
-                                f.write(create_stmt + ";\n\n")
-
-                                cursor.execute(f"SELECT * FROM `{table}`")
-                                rows = cursor.fetchall()
-                                if rows:
-                                    cols = list(rows[0].keys())
-                                    for r in rows:
-                                        vals = []
-                                        for c in cols:
-                                            v = r.get(c)
-                                            if v is None:
-                                                vals.append('NULL')
-                                            elif isinstance(v, (int, float)):
-                                                vals.append(str(v))
-                                            else:
-                                                escaped = str(v).replace("'", "''")
-                                                vals.append(f"'{escaped}'")
-                                        cols_escaped = ', '.join([f'`{c}`' for c in cols])
-                                        f.write(f"INSERT INTO `{table}` ({cols_escaped}) VALUES ({', '.join(vals)});\n")
-                                f.write('\n')
 
                     Logger.success(f"Backup creado (fallback SQL): {backup_file}", "SETTINGS_CONTROLLER")
                     return True, backup_file
