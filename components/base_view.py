@@ -13,14 +13,12 @@ from components.toast import ToastManager
 from utils.alerts import alert_manager
 import queue
 import os
-import threading
-from components.loading_overlay import LoadingOverlay
 
 class BaseView(ctk.CTk):
     """Clase base para todas las vistas con sidebar y header."""
     
     def __init__(self, user_data, page_id="dashboard", page_title="Dashboard", 
-             page_subtitle="Bienvenido al sistema de gestión", defer_content_creation=False):
+             page_subtitle="Bienvenido al sistema de gestión"):
      super().__init__()
     
      self.user_data = user_data
@@ -28,7 +26,6 @@ class BaseView(ctk.CTk):
      self.page_title = page_title
      self.page_subtitle = page_subtitle
      self.base_path = os.path.dirname(os.path.abspath(__file__))
-     self.defer_content_creation = defer_content_creation
     
     # Configuración de ventana
      self.title(f"NoteBox - {page_title}")
@@ -98,9 +95,8 @@ class BaseView(ctk.CTk):
         )
         self.content_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Llamar al método que las subclases sobreescriben (solo si no se difiere)
-        if not self.defer_content_creation:
-            self.create_content()
+        # Llamar al método que las subclases sobreescriben
+        self.create_content()
     
     def create_content(self):
         """Método a sobreescribir por las subclases para crear el contenido."""
@@ -108,12 +104,6 @@ class BaseView(ctk.CTk):
     
     def navigate_to(self, page_id):
      """Navega a otra página manteniendo maximizado."""
-     # Mostrar loading antes de cambiar de vista
-     self.show_loading("Cargando vista...")
-     
-     # Dar tiempo para que se muestre el loading
-     self.update_idletasks()
-     
      # Guardar user_data ANTES de destruir
      user_data = self.user_data
     
@@ -395,45 +385,3 @@ class BaseView(ctk.CTk):
     
     def run(self):
         self.mainloop()
-
-    # ==========================================
-    # MÉTODOS PARA CARGA ASÍNCRONA (Loading)
-    # ==========================================
-
-    def show_loading(self, message="Cargando..."):
-        """Muestra la pantalla de carga sobre toda la ventana."""
-        if hasattr(self, 'loading_overlay') and self.loading_overlay:
-            self.loading_overlay.destroy()
-            
-        self.loading_overlay = LoadingOverlay(self, message=message)
-        self.loading_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
-        self.loading_overlay.lift()
-        self.update_idletasks()
-
-    def hide_loading(self):
-        """Oculta la pantalla de carga."""
-        if hasattr(self, 'loading_overlay') and self.loading_overlay:
-            self.loading_overlay.stop()
-            self.loading_overlay.destroy()
-            self.loading_overlay = None
-
-    def run_background_task(self, task_func, callback_func=None, error_callback=None):
-        """
-        Ejecuta task_func en un hilo separado.
-        Al finalizar, ejecuta callback_func en el hilo principal con el resultado.
-        """
-        def thread_target():
-            try:
-                result = task_func()
-                # Programar callback en el hilo principal
-                if callback_func:
-                    self.after(0, lambda: callback_func(result))
-            except Exception as e:
-                print(f"Error en background task: {e}")
-                if error_callback:
-                    self.after(0, lambda: error_callback(e))
-                else:
-                    self.after(0, self.hide_loading) # Asegurar que se quite el loading si hay error
-
-        thread = threading.Thread(target=thread_target, daemon=True)
-        thread.start()

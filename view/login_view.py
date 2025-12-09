@@ -201,21 +201,12 @@ class NoteBoxLogin(ctk.CTk):
             # Mostrar mensaje de éxito
             self.show_message(f"¡Bienvenido, {user_data['nombre']}!", "success")
             
-            # Mostrar loading antes de cerrar
-            self.configure(cursor="wait")
-            self.update_idletasks()
-            
-            # Pequeña pausa para que se vea el mensaje
-            self.after(500, lambda: self._open_dashboard(user_data))
+            # Cerrar ventana de login y abrir dashboard
+            self.destroy()
+            from view.dashboard_view import DashboardView
+            DashboardView(user_data).run()
         else:
             self.show_message("Usuario o contraseña incorrectos", "error")
-    
-    def _open_dashboard(self, user_data):
-        """Abre el dashboard después del login."""
-        # Cerrar ventana de login y abrir dashboard
-        self.destroy()
-        from view.dashboard_view import DashboardView
-        DashboardView(user_data).run()
     
     def forgot_password(self):
         self.show_message("Contacte al administrador", "info")
