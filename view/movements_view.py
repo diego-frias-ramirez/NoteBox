@@ -85,6 +85,7 @@ class MovementsView(BaseView):
             height=45,
             font=ctk.CTkFont(size=13, weight="bold"),
             fg_color="#10b981",
+            text_color="white",
             hover_color="#059669",
             corner_radius=8,
             command=lambda: self.set_movement_type("Entrada")
@@ -98,10 +99,10 @@ class MovementsView(BaseView):
             height=45,
             font=ctk.CTkFont(size=13),
             fg_color="white",
-            text_color="#6c757d",
+            text_color="#64748B", # Slate-500 para texto inactivo legible
             border_width=2,
-            border_color="#e0e0e0",
-            hover_color="#f8f9fa",
+            border_color="#e2e8f0",
+            hover_color="#f1f5f9", # Slate-100 para hover sutil
             corner_radius=8,
             command=lambda: self.set_movement_type("Salida")
         )
@@ -344,31 +345,35 @@ class MovementsView(BaseView):
 
         if movement_type == "Entrada":
             self.entry_btn.configure(
-                fg_color="#10b981",
+                fg_color="#10b981", # Verde Base
                 text_color="white",
                 font=ctk.CTkFont(size=13, weight="bold"),
-                border_width=0
+                border_width=0,
+                hover_color="#059669" # Verde Oscuro
             )
             self.exit_btn.configure(
                 fg_color="white",
-                text_color="#6c757d",
+                text_color="#64748B", # Slate-500
                 font=ctk.CTkFont(size=13),
                 border_width=2,
-                border_color="#e0e0e0"
+                border_color="#e2e8f0",
+                hover_color="#f1f5f9" # Slate-100
             )
         else:
             self.exit_btn.configure(
-                fg_color="#ef233c",
+                fg_color="#ef233c", # Rojo Base
                 text_color="white",
                 font=ctk.CTkFont(size=13, weight="bold"),
-                border_width=0
+                border_width=0,
+                hover_color="#d90429" # Rojo Oscuro
             )
             self.entry_btn.configure(
                 fg_color="white",
-                text_color="#6c757d",
+                text_color="#64748B", # Slate-500
                 font=ctk.CTkFont(size=13),
                 border_width=2,
-                border_color="#e0e0e0"
+                border_color="#e2e8f0",
+                hover_color="#f1f5f9" # Slate-100
             )
 
     def load_data(self):
