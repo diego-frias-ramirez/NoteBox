@@ -27,7 +27,9 @@ class InventoryView(BaseView):
         self.search_query = ""
         self.filter_category_ids = []  # CAMBIADO: Lista de categorías (máximo 3)
         self.sort_order = None  # Independiente: None, "newest", "oldest"
+
         self.images = {}
+        self.stock_alert_check_done = False # Control para evitar spam de alertas
 
         # Instancia del controlador
         self.controller = InventoryController()
@@ -820,21 +822,28 @@ class InventoryView(BaseView):
     def generate_stock_alerts(self, products):
         """Genera alertas automáticas para productos con stock bajo o agotado."""
         try:
-            low_stock_count = 0
-            no_stock_count = 0
-            
+            # 1. Generar alertas individuales para los productos visibles (toasts/logs)
+            # Esto mantiene la funcionalidad de notificar sobre lo que el usuario ve
             for product in products:
-                alert_id = alert_manager.generate_stock_alert(product)
-                if alert_id:
-                    if product.get('stock', 0) <= 0:
-                        no_stock_count += 1
-                    else:
-                        low_stock_count += 1
+                alert_manager.generate_stock_alert(product)
             
-            if low_stock_count > 0 or no_stock_count > 0:
-                total = len(products)
-                low_rotation = alert_manager.get_low_rotation_alerts_count(products)
-                alert_manager.show_stock_summary(total, low_stock_count, no_stock_count, low_rotation, self)
+            # 2. Generar el resumen GLOBAL (solo una vez por sesión de vista para no molestar)
+            # Se usa datos REALES de la base de datos, no solo de la página actual
+            if not self.stock_alert_check_done:
+                self.stock_alert_check_done = True
+                
+                # Obtener resumen REAL desde la base de datos a través del controlador
+                summary = self.controller.get_inventory_summary()
+                
+                if summary:
+                    total = summary.get('total_productos', 0)
+                    low_stock_count = summary.get('productos_stock_bajo', 0)
+                    no_stock_count = summary.get('productos_agotados', 0)
+                    low_rotation = summary.get('productos_sin_movimiento', 0)
+                    
+                    # Mostrar resumen si hay problemas globales (stock bajo o agotado)
+                    if low_stock_count > 0 or no_stock_count > 0:
+                        alert_manager.show_stock_summary(total, low_stock_count, no_stock_count, low_rotation, self)
                 
         except Exception as e:
             Logger.error(f"Error generando alertas de stock: {str(e)}", "INVENTORY_VIEW")
