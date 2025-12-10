@@ -201,10 +201,10 @@ class NoteBoxLogin(ctk.CTk):
             # Mostrar mensaje de éxito
             self.show_message(f"¡Bienvenido, {user_data['nombre']}!", "success")
             
-            # Cerrar ventana de login y abrir dashboard
+            # Cerrar ventana de login y abrir dashboard con toast de inventario
             self.destroy()
             from view.dashboard_view import DashboardView
-            DashboardView(user_data).run()
+            DashboardView(user_data, show_inventory_toast=True).run()
         else:
             self.show_message("Usuario o contraseña incorrectos", "error")
     
