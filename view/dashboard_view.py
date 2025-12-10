@@ -18,14 +18,13 @@ from utils.helpers import Helpers
 class DashboardView(BaseView):
     """Vista del Dashboard Principal."""
     
-    def __init__(self, user_data, show_inventory_toast=False):
+    def __init__(self, user_data):
         self.inventory_summary = {}
         self.low_stock_products = []
         self.active_alerts = []
         self.category_data = []
         self.images = {}
         self.icon_refs = {}
-        self.show_inventory_toast = show_inventory_toast
         
         self.report_model = ReportModel()
         self.alert_model = AlertModel()
@@ -49,179 +48,6 @@ class DashboardView(BaseView):
             Logger.info("Datos del dashboard cargados", "DASHBOARD")
         except Exception as e:
             Logger.error(f"Error cargando datos: {e}", "DASHBOARD")
-    
-    def show_inventory_summary_toast(self):
-        """Muestra una ventana modal grande con el resumen de inventario y la fecha actual."""
-        from datetime import datetime
-        
-        if not self.show_inventory_toast:
-            return
-        
-        try:
-            # Obtener datos del inventario
-            total = self.inventory_summary.get('total_productos', 0)
-            disponibles = self.inventory_summary.get('productos_disponibles', 0)
-            stock_bajo = self.inventory_summary.get('productos_stock_bajo', 0)
-            agotados = self.inventory_summary.get('productos_agotados', 0)
-            valor_total = self.inventory_summary.get('valor_total_inventario', 0)
-            unidades_totales = self.inventory_summary.get('unidades_totales', 0)
-            
-            # Obtener fecha actual
-            now = datetime.now()
-            date_str = now.strftime("%d/%m/%Y %H:%M")
-            
-            # Crear ventana modal
-            popup = ctk.CTkToplevel(self)
-            popup.title("Resumen de Inventario")
-            popup.geometry("600x500")
-            popup.resizable(False, False)
-            popup.configure(fg_color="#FFFFFF")
-            popup.transient(self)
-            popup.grab_set()
-            
-            # Centrar ventana
-            popup.update_idletasks()
-            parent_x = self.winfo_x()
-            parent_y = self.winfo_y()
-            parent_w = self.winfo_width()
-            parent_h = self.winfo_height()
-            
-            popup_x = parent_x + (parent_w - 600) // 2
-            popup_y = parent_y + (parent_h - 500) // 2
-            popup.geometry(f"600x500+{popup_x}+{popup_y}")
-            
-            # Header con título y fecha
-            header = ctk.CTkFrame(popup, fg_color="#00B4D8", corner_radius=15)
-            header.pack(fill="x", padx=20, pady=(20, 15))
-            header.pack_propagate(False)
-            header.configure(height=80)
-            
-            ctk.CTkLabel(
-                header,
-                text="📦 Resumen de Inventario",
-                font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
-                text_color="#FFFFFF"
-            ).pack(pady=(15, 5))
-            
-            ctk.CTkLabel(
-                header,
-                text=f"Generado: {date_str}",
-                font=ctk.CTkFont(family="Segoe UI", size=12),
-                text_color="#E0F7FA"
-            ).pack()
-            
-            # Contenido principal
-            content = ctk.CTkScrollableFrame(
-                popup,
-                fg_color="transparent",
-                scrollbar_button_color="#CBD5E1",
-                scrollbar_button_hover_color="#94A3B8"
-            )
-            content.pack(fill="both", expand=True, padx=20, pady=15)
-            
-            # Tarjetas de información
-            cards_data = [
-                {
-                    "icon": "📊",
-                    "title": "Productos Totales",
-                    "value": str(total),
-                    "bg": "#F0F9FF",
-                    "color": "#0369A1"
-                },
-                {
-                    "icon": "✅",
-                    "title": "Productos Disponibles",
-                    "value": str(disponibles),
-                    "bg": "#ECFDF5",
-                    "color": "#047857"
-                },
-                {
-                    "icon": "⚠️",
-                    "title": "Stock Bajo",
-                    "value": str(stock_bajo),
-                    "bg": "#FEF3C7",
-                    "color": "#D97706"
-                },
-                {
-                    "icon": "🔴",
-                    "title": "Productos Agotados",
-                    "value": str(agotados),
-                    "bg": "#FEE2E2",
-                    "color": "#DC2626"
-                },
-                {
-                    "icon": "📦",
-                    "title": "Unidades en Stock",
-                    "value": f"{unidades_totales:,}",
-                    "bg": "#F5F3FF",
-                    "color": "#7C3AED"
-                },
-                {
-                    "icon": "💰",
-                    "title": "Valor Total Inventario",
-                    "value": Helpers.format_currency(valor_total),
-                    "bg": "#FEFCE8",
-                    "color": "#B45309"
-                }
-            ]
-            
-            for card in cards_data:
-                self.create_summary_card(content, card)
-            
-            # Frame para el botón
-            button_frame = ctk.CTkFrame(popup, fg_color="transparent")
-            button_frame.pack(fill="x", padx=20, pady=(0, 20))
-            
-            ctk.CTkButton(
-                button_frame,
-                text="✓ Cerrar",
-                font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
-                fg_color="#00B4D8",
-                hover_color="#0096C7",
-                text_color="#FFFFFF",
-                height=45,
-                corner_radius=10,
-                command=popup.destroy
-            ).pack(fill="x")
-            
-            Logger.info("Ventana modal del resumen de inventario mostrada", "DASHBOARD")
-        except Exception as e:
-            Logger.error(f"Error mostrando ventana modal de inventario: {e}", "DASHBOARD")
-    
-    def create_summary_card(self, parent, data):
-        """Crea una tarjeta de información para el resumen."""
-        card = ctk.CTkFrame(parent, fg_color=data["bg"], corner_radius=12)
-        card.pack(fill="x", pady=10)
-        card.pack_propagate(False)
-        card.configure(height=90)
-        
-        inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=20, pady=15)
-        
-        # Fila superior: icono y título
-        top_frame = ctk.CTkFrame(inner, fg_color="transparent")
-        top_frame.pack(fill="x", pady=(0, 8))
-        
-        ctk.CTkLabel(
-            top_frame,
-            text=data["icon"],
-            font=ctk.CTkFont(size=20)
-        ).pack(side="left", padx=(0, 10))
-        
-        ctk.CTkLabel(
-            top_frame,
-            text=data["title"],
-            font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
-            text_color=data["color"]
-        ).pack(side="left", anchor="w")
-        
-        # Fila inferior: valor
-        ctk.CTkLabel(
-            inner,
-            text=data["value"],
-            font=ctk.CTkFont(family="Segoe UI", size=20, weight="bold"),
-            text_color=data["color"]
-        ).pack(anchor="w", padx=(30, 0))
     
     def create_content(self):
         """Crea el contenido principal del dashboard."""
@@ -549,11 +375,4 @@ class DashboardView(BaseView):
     
     def get_notification_count(self):
         return len(self.active_alerts)
-
-    def run(self):
-        """Ejecuta la vista y muestra el toast del inventario si es necesario."""
-        # Programar el toast para que aparezca después de un pequeño retraso
-        self.after(500, self.show_inventory_summary_toast)
-        # Llamar al método run de la clase padre
-        self.mainloop()
 

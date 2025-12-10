@@ -412,4 +412,3 @@ class NotificationsView(BaseView):
         except Exception as e:
             Logger.error(f"Error al contar notificaciones no leídas: {e}", "NOTIFICATIONS_VIEW")
             return 0
-
