@@ -277,6 +277,27 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- ============================================
+-- TRIGGERS (Disparadores)
+-- ============================================
+
+-- Trigger para actualizar automáticamente el estado del producto cuando cambia el stock
+DELIMITER $$
+CREATE TRIGGER trg_actualizar_estado_producto
+BEFORE UPDATE ON productos
+FOR EACH ROW
+BEGIN
+    -- Actualizar el estado basado en el nuevo stock
+    IF NEW.stock = 0 THEN
+        SET NEW.estado = 'Agotado';
+    ELSEIF NEW.stock <= NEW.stock_minimo THEN
+        SET NEW.estado = 'Stock Bajo';
+    ELSE
+        SET NEW.estado = 'Disponible';
+    END IF;
+END$$
+DELIMITER ;
+
 COMMIT;
 
 -- Confirmar creación
