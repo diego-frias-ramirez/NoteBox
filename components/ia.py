@@ -72,7 +72,7 @@ class ChatAIWindow(ctk.CTkToplevel):
         
         title_label = ctk.CTkLabel(
             left_container,
-            text="💬 Chat AI",
+            text="💬 Chat bot",
             font=ctk.CTkFont(family="Segoe UI", size=20, weight="bold"),
             text_color="#FFFFFF"
         )
