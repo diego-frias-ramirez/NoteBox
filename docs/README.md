@@ -29,11 +29,11 @@ El sistema proporciona:
 </p>
 
 <p align="center">
-  <img src="../assets/images/Dashboard.png" alt="Dashboard NoteBox" width="600">
+  <img src="../assets/images/Dashboard.PNG" alt="Dashboard NoteBox" width="600">
 </p>
 
 <p align="center">
-  <img src="../assets/images/inventory.png" alt="Dashboard NoteBox" width="600">
+  <img src="../assets/images/inventory.PNG" alt="inventory NoteBox" width="600">
 </p>
 ---
 
