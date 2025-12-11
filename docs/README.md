@@ -1,122 +1,176 @@
-NoteBox: Sistema de Gestión de Inventario
-Descripción
+<p align="center">
+  <img src="assets/icons/logo.png" alt="NoteBox Logo" width="140">
+</p>
 
-NoteBox es un sistema de gestión de inventario desarrollado para Papelería Valeria. Su objetivo es modernizar y optimizar el control de inventarios, reemplazando procesos manuales mediante una solución tecnológica accesible, eficiente y fácil de usar.
+<h1 align="center">NoteBox – Sistema de Gestión de Inventario</h1>
+<p align="center">Aplicación desarrollada para la administración y control de inventario de Papelería Valeria.</p>
 
-El sistema permite administrar productos, registrar movimientos de entrada y salida, generar reportes, gestionar usuarios y recibir alertas automáticas sobre el estado del inventario.
+---
 
-Características Principales
-Dashboard Principal
+## 1. Descripción General
 
-Resumen general del estado del inventario, estadísticas clave, gráficos y alertas activas.
+NoteBox es un sistema de gestión de inventario diseñado para optimizar el control de productos en papelerías y pequeños negocios. Su arquitectura estructurada, interfaz moderna y herramientas integradas permiten una administración eficiente, rápida y confiable.
 
-Gestión de Inventario
+El sistema proporciona:
 
-Alta, baja y modificación de productos.
+- Control completo de productos.  
+- Registro de movimientos de entrada y salida.  
+- Estadísticas y reportes visuales.  
+- Gestión de usuarios y roles.  
+- Alertas automáticas de inventario.  
+- Personalización visual y configuraciones del sistema.  
 
-Filtros por categoría, búsqueda y ordenamiento avanzado.
+---
 
-Movimientos de Inventario
+## 2. Vista Previa
 
-Registro de entradas (compras) y salidas (ventas).
+<p align="center">
+  <img src="assets/images/intro.png" alt="Portada NoteBox" width="420">
+</p>
 
-Historial completo de movimientos.
+<p align="center">
+  <img src="assets/images/dashboard.png" alt="Banner NoteBox" width="600">
+</p>
 
-Resumen diario.
+---
 
-Generación de Reportes
+## 3. Características Principales
 
-Exportación en PDF y Excel.
+### • Dashboard principal  
+Panel con estadísticas, gráficos y alertas de inventario.
 
-Gráficos de evolución y distribución por categoría.
+### • Gestión de Inventario  
+- Registro de productos.  
+- Edición, eliminación y filtros avanzados.  
+- Control de stock y categorías.
 
-Alertas y Notificaciones
+### • Movimientos de Inventario  
+- Entradas y salidas con historial detallado.  
+- Validación automática de existencias.
 
-Alertas automáticas para:
+### • Reportes  
+- Exportación en PDF y Excel.  
+- Gráficos estadísticos generados con matplotlib.
 
-Stock bajo
+### • Gestión de Usuarios  
+- Roles: Administrador y Empleado.  
+- Alta, baja, edición y control de accesos.
 
-Productos agotados
+### • Notificaciones  
+- Alertas de stock bajo, productos agotados y movimientos recientes.
 
-Movimientos recientes
+### • Configuración del Sistema  
+- Datos empresariales.  
+- Apariencia (tema claro/oscuro).  
+- Respaldos automáticos.
 
-Gestión de Usuarios
+---
 
-Creación, edición y eliminación de cuentas con roles:
+## 4. Tecnologías Utilizadas
 
-Administrador
+| Categoría | Tecnología |
+|----------|------------|
+| Lenguaje principal | Python 3.x |
+| Interfaz gráfica | CustomTkinter |
+| Base de datos | MySQL |
+| Reportes PDF | reportlab |
+| Exportación Excel | openpyxl, xlsxwriter |
+| Gráficos | matplotlib |
+| Utilidades | Pillow, numpy, python-dotenv |
 
-Empleado
+---
 
-Configuración del Sistema
+## 5. Instalación
 
-Personalización de:
-
-Datos de la empresa
-
-Colores de interfaz
-
-Configuración de copias de seguridad automáticas
-
-Ayuda y Soporte
-
-Incluye manuales, información de contacto y centro de soporte técnico.
-
-Tecnologías Utilizadas
-
-Lenguaje de Programación: Python 3.x
-
-Interfaz Gráfica: CustomTkinter (basado en Tkinter)
-
-Base de Datos: MySQL
-
-Librerías Adicionales: PIL (Pillow), matplotlib, tkcalendar (opcional)
-
-Estructura del Proyecto
-NoteBox/
-├── assets/              # Imágenes, iconos y elementos gráficos
-├── components/          # Componentes reutilizables de la UI (Header, Sidebar, BaseView)
-├── config/              # Configuraciones generales y de base de datos
-├── controller/          # Lógica de negocio y manejo de interacciones
-├── docs/                # Documentación del proyecto
-├── exports/             # Backups, logs y reportes generados
-├── logs/                # Registros del sistema
-├── model/               # Modelos y esquema de base de datos
-└── main.py              # Archivo principal de ejecución
-
-Instalación y Ejecución
-1. Clonar el repositorio
-git clone <url-del-repositorio>
+### 1. Clonar el repositorio  
+```bash
+git clone https://github.com/diego-frias-ramirez/notebox.git
 cd NoteBox
-
 2. Instalar dependencias
-pip install -r requirements.txt
+bash
+Copiar código
+pip install -r requeriments.txt
+3. Configuración de la base de datos
+Instalar y ejecutar MySQL.
 
-3. Configurar la base de datos
+Importar el archivo:
 
-Asegúrate de tener un servidor MySQL en ejecución.
-
-Importa el archivo:
-
+pgsql
+Copiar código
 model/database/db_schema.sql
+Configurar credenciales en:
 
-
-Configura las credenciales en:
-
+arduino
+Copiar código
 config/db_config.json
-
 4. Ejecutar la aplicación
+bash
+Copiar código
 python main.py
+6. Estructura del Proyecto
+txt
+Copiar código
+NoteBox/
+│
+├── assets/
+│   ├── icons/           # Iconos del sistema
+│   ├── images/          # Imágenes generales y banners
+│   └── styles/          # Colores, fuentes y temas
+│
+├── components/          # Componentes de interfaz reutilizables
+├── config/              # Configuraciones del sistema
+├── controller/          # Lógica de negocio
+├── docs/                # Documentación técnica
+├── exports/             # Backups, reportes y logs generados
+├── logs/                # Registro de errores y actividad
+├── model/               # Modelos y acceso a datos
+├── tests/               # Pruebas automáticas
+├── utils/               # Funciones auxiliares
+└── view/                # Vistas de la interfaz gráfica
+7. Uso del Sistema
+Al iniciar NoteBox, se mostrará la pantalla de inicio de sesión.
+Una vez autenticado, el usuario podrá navegar mediante la barra lateral por:
 
-Uso
+Dashboard
 
-Al iniciar la aplicación se mostrará la pantalla de inicio de sesión.
-Una vez autenticado, el usuario puede navegar entre los módulos mediante la barra lateral.
+Inventario
 
-Contribuciones
+Movimientos
 
-Las contribuciones son bienvenidas. Para proponer cambios, crear un Pull Request siguiendo las buenas prácticas del repositorio.
+Reportes
 
-Licencia
+Usuarios
 
-Este proyecto está licenciado bajo la Licencia MIT. Para más información consulte el archivo LICENSE.
+Configuración
+
+Centro de ayuda
+
+Notificaciones
+
+Cada módulo cuenta con botones contextuales, tablas interactivas, formularios y filtros.
+
+8. Contribuciones
+Las contribuciones están abiertas.
+Para colaborar:
+
+Crear un fork.
+
+Trabajar en una rama separada.
+
+Enviar un Pull Request describiendo los cambios.
+
+9. Licencia
+Este proyecto está licenciado bajo la MIT License.
+Consulta el archivo LICENCE para más detalles.
+
+10. Contributors
+
+Frias Ramirez Diego Fernando
+
+Valenzuela De la Cruz William
+
+Gonzalez Conde Derian Octavio
+
+Martinez Martinez Cristian Alfonso
+
+Quiñones Cervantes Ignacio
