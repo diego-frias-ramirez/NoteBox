@@ -29,7 +29,7 @@ El sistema proporciona:
 </p>
 
 <p align="center">
-  <img src="../assets/images/Dashboard.PNG" alt="Dashboard NoteBox" width="600">
+  <img src="../assets/images/dashboard.PNG" alt="Dashboard NoteBox" width="600">
 </p>
 
 <p align="center">
