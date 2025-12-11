@@ -23,3 +23,7 @@ pandas==2.1.4
 
 # Selector visual de fechas
 tkcalendar==1.6.4
+
+# Utilidades adicionales (necesarias para el código)
+numpy==1.26.4
+python-dotenv==1.0.1
