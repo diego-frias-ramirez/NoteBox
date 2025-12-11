@@ -90,8 +90,7 @@ Panel con estadísticas, gráficos y alertas de inventario.
 git clone https://github.com/diego-frias-ramirez/notebox.git
 cd NoteBox
 2. Instalar dependencias
-bash
-Copiar código
+
 pip install -r requeriments.txt
 3. Configuración de la base de datos
 Instalar y ejecutar MySQL.
@@ -107,12 +106,11 @@ arduino
 Copiar código
 config/db_config.json
 4. Ejecutar la aplicación
-bash
-Copiar código
+
 python main.py
+
 6. Estructura del Proyecto
-txt
-Copiar código
+
 NoteBox/
 │
 ├── assets/
