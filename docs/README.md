@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icons/logo.png" alt="NoteBox Logo" width="140">
+  <img src="../assets/icons/logo.png" alt="NoteBox Logo" width="140">
 </p>
 
 <h1 align="center">NoteBox – Sistema de Gestión de Inventario</h1>
@@ -25,11 +25,11 @@ El sistema proporciona:
 ## 2. Vista Previa
 
 <p align="center">
-  <img src="assets/images/intro.png" alt="Portada NoteBox" width="420">
+  <img src="../assets/images/intro.png" alt="Portada NoteBox" width="420">
 </p>
 
 <p align="center">
-  <img src="assets/images/dashboard.png" alt="Banner NoteBox" width="600">
+  <img src="../assets/images/dashboard.png" alt="Dashboard NoteBox" width="600">
 </p>
 
 ---
