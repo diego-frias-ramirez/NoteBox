@@ -73,9 +73,9 @@ class ToastNotification(ctk.CTkFrame):
         )
         self.close_btn.place(relx=1.0, rely=0.0, anchor="ne", x=-8, y=8)
         
-    def show_toast(self, x, y):
-        """Muestra el toast en la posición dada."""
-        self.place(x=x, y=y)
+    def show_toast(self, **kwargs):
+        """Muestra el toast con los argumentos de posicionamiento dados."""
+        self.place(**kwargs)
         self.lift()
         
         # Iniciar temporizador de desvanecimiento
@@ -146,16 +146,10 @@ class ToastManager:
                     if prev_toast.winfo_exists():
                         current_y += prev_toast.winfo_reqheight() + self.spacing
             
-            # Calcular X (siempre alineado a la derecha)
-            window_width = self.master.winfo_width()
-            # Si la ventana no está renderizada aún, usar valor por defecto seguro
-            if window_width < 100: 
-                window_width = 1000 
-                
-            toast_width = toast.winfo_reqwidth()
-            pos_x = window_width - toast_width - self.end_x
-            
-            toast.show_toast(pos_x, current_y)
+            # Usar posicionamiento relativo al ancho de la ventana
+            # relx=1.0 (borde derecho), anchor="ne" (esquina superior derecha)
+            # x=-self.end_x (margen negativo hacia la izquierda)
+            toast.show_toast(relx=1.0, x=-self.end_x, y=current_y, anchor="ne")
         except Exception:
             pass
 
@@ -169,14 +163,11 @@ class ToastManager:
     def _reposition_all_toasts(self):
         """Recalcula la posición de todos los toasts activos."""
         current_y = self.start_y
-        window_width = self.master.winfo_width()
-        
         for toast in self.active_toasts:
             try:
                 if toast.winfo_exists():
-                    toast_width = toast.winfo_reqwidth()
-                    pos_x = window_width - toast_width - self.end_x
-                    toast.place(x=pos_x, y=current_y)
+                    # Mismo posicionamiento relativo
+                    toast.place(relx=1.0, x=-self.end_x, y=current_y, anchor="ne")
                     current_y += toast.winfo_reqheight() + self.spacing
             except Exception:
                 pass
