@@ -312,7 +312,7 @@ class DashboardView(BaseView):
             panel, text="Ver todas las alertas →",
             fg_color="transparent", text_color="#00B4D8",
             hover_color="#E0F7FA", font=ctk.CTkFont(size=12),
-            command=lambda: self.navigate_to("inventario")
+            command=self.show_notifications
         ).pack(pady=(10, 20))
     
     def create_alert_item(self, parent, alert_type, title, detail):
